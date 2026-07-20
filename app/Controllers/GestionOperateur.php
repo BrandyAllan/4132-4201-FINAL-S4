@@ -45,9 +45,6 @@ class GestionOperateur extends BaseController
 
         $gainTotal = $totalFrais;
 
-        /*
-        * Type 1 : retrait
-        */
         $resultatGainRetraits = $db
             ->table('operations')
             ->selectSum('frais', 'gain_retraits')
@@ -59,9 +56,6 @@ class GestionOperateur extends BaseController
             $resultatGainRetraits['gain_retraits'] ?? 0
         );
 
-        /*
-        * Type 3 : transfert
-        */
         $resultatGainTransferts = $db
             ->table('operations')
             ->selectSum('frais', 'gain_transferts')
@@ -73,9 +67,6 @@ class GestionOperateur extends BaseController
             $resultatGainTransferts['gain_transferts'] ?? 0
         );
 
-        /*
-        * Gains journaliers des retraits.
-        */
         $retraitsParJour = $db
             ->table('operations')
             ->select(
@@ -96,9 +87,6 @@ class GestionOperateur extends BaseController
             ->get()
             ->getResultArray();
 
-        /*
-        * Gains journaliers des transferts.
-        */
         $transfertsParJour = $db
             ->table('operations')
             ->select(
@@ -155,6 +143,67 @@ class GestionOperateur extends BaseController
                 $transfertsParDate[$date] ?? 0;
         }
 
+        $gainCommissions = $db->table('operations o')
+            ->select(
+                'COALESCE(SUM(
+                    o.montant * b.commission / 100
+                ), 0) AS total_commission',
+                false
+            )
+            ->join(
+                'types_operations t',
+                't.id = o.type_operation_id'
+            )
+            ->join(
+                'baremes_frais b',
+                'b.type_operation_id = o.type_operation_id
+                AND o.montant >= b.montant_min
+                AND (
+                    b.montant_max IS NULL
+                    OR o.montant <= b.montant_max
+                )',
+                'left'
+            )
+            ->where('t.code', 'TRANS')
+            ->where('o.statut', 'VALIDEE')
+            ->where('b.actif', 1)
+            ->get()
+            ->getRow()
+            ->total_commission ?? 0;
+
+        $gainsCommissionsGraphique = $db->query("
+            SELECT
+                strftime('%m', o.date_operation) AS mois,
+
+                COALESCE(
+                    SUM(
+                        o.montant * b.commission / 100
+                    ),
+                    0
+                ) AS total
+
+            FROM operations o
+
+            INNER JOIN types_operations t
+                ON t.id = o.type_operation_id
+
+            INNER JOIN baremes_frais b
+                ON b.type_operation_id = o.type_operation_id
+                AND o.montant >= b.montant_min
+                AND (
+                    b.montant_max IS NULL
+                    OR o.montant <= b.montant_max
+                )
+
+            WHERE o.statut = 'VALIDEE'
+            AND t.code = 'TRANS'
+            AND b.actif = 1
+
+            GROUP BY strftime('%m', o.date_operation)
+
+            ORDER BY strftime('%m', o.date_operation)
+        ")->getResultArray();
+
         return view('operateur/gestion', [
             'gainTotal'                => $gainTotal,
             'gainRetraits'             => $gainRetraits,
@@ -166,6 +215,8 @@ class GestionOperateur extends BaseController
             'labelsGraphique'          => $labelsGraphique,
             'gainsRetraitsGraphique'   => $gainsRetraitsGraphique,
             'gainsTransfertsGraphique' => $gainsTransfertsGraphique,
+            'gainsCommissions' => $gainCommissions,
+            'gainsCommissionsGraphique' => $gainsCommissionsGraphique,
         ]);
     }
 

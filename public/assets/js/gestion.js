@@ -193,4 +193,55 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    const commissionCtx =
+        document.getElementById('commissionChart');
+
+    new Chart(commissionCtx, {
+
+        type: 'line',
+
+        data: {
+
+            labels: commissionLabels,
+
+            datasets: [{
+
+                label: 'Commissions',
+
+                data: commissionData,
+
+                borderColor: '#f59e0b',
+
+                backgroundColor: 'rgba(245,158,11,.15)',
+
+                fill: true,
+
+                tension: .35,
+
+                pointRadius: 4
+
+            }]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            plugins: {
+
+                legend: {
+
+                    display: false
+
+                }
+
+            }
+
+        }
+
+    });
 });
