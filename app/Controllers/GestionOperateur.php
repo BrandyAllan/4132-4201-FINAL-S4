@@ -10,7 +10,165 @@ class GestionOperateur extends BaseController
 {
     public function index(): string
     {
-        return view('operateur/gestion');
+        $db = db_connect();
+
+        $totalOperations = $db
+            ->table('operations')
+            ->countAllResults();
+
+        $montantTotalResult = $db
+            ->table('operations')
+            ->selectSum('montant', 'montant_total')
+            ->get()
+            ->getRowArray();
+
+        $montantTotal = (float) (
+            $montantTotalResult['montant_total'] ?? 0
+        );
+
+        $totalFraisResult = $db
+            ->table('operations')
+            ->selectSum('frais', 'total_frais')
+            ->get()
+            ->getRowArray();
+
+        $totalFrais = (float) (
+            $totalFraisResult['total_frais'] ?? 0
+        );
+
+        $comptesActifs = $db
+            ->table('comptes')
+            ->where('statut', 'ACTIF')
+            ->countAllResults();
+
+        $gainTotal = $totalFrais;
+
+        $resultatGainRetraits = $db
+            ->table('operations o')
+            ->selectSum('o.frais', 'gain_retraits')
+            ->join(
+                'types_operations t',
+                't.id = o.type_operation_id'
+            )
+            ->where('t.code', 'RETRAIT')
+            ->get()
+            ->getRowArray();
+
+        $gainRetraits = (float) (
+            $resultatGainRetraits['gain_retraits'] ?? 0
+        );
+
+        $resultatGainTransferts = $db
+            ->table('operations o')
+            ->selectSum('o.frais', 'gain_transferts')
+            ->join(
+                'types_operations t',
+                't.id = o.type_operation_id'
+            )
+            ->where('t.code', 'TRANSFERT')
+            ->get()
+            ->getRowArray();
+
+        $gainTransferts = (float) (
+            $resultatGainTransferts['gain_transferts'] ?? 0
+        );
+
+        $retraitsParJour = $db
+            ->table('operations o')
+            ->select(
+                'DATE(o.date_operation) AS jour, '
+                . 'SUM(o.frais) AS total',
+                false
+            )
+            ->join(
+                'types_operations t',
+                't.id = o.type_operation_id'
+            )
+            ->where('t.code', 'RETRAIT')
+            ->where(
+                'o.date_operation >=',
+                date(
+                    'Y-m-d 00:00:00',
+                    strtotime('-29 days')
+                )
+            )
+            ->groupBy('DATE(o.date_operation)')
+            ->orderBy('jour', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $transfertsParJour = $db
+            ->table('operations o')
+            ->select(
+                'DATE(o.date_operation) AS jour, '
+                . 'SUM(o.frais) AS total',
+                false
+            )
+            ->join(
+                'types_operations t',
+                't.id = o.type_operation_id'
+            )
+            ->where('t.code', 'TRANSFERT')
+            ->where(
+                'o.date_operation >=',
+                date(
+                    'Y-m-d 00:00:00',
+                    strtotime('-29 days')
+                )
+            )
+            ->groupBy('DATE(o.date_operation)')
+            ->orderBy('jour', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $retraitsParDate = [];
+
+        foreach ($retraitsParJour as $ligne) {
+            $retraitsParDate[$ligne['jour']] =
+                (float) $ligne['total'];
+        }
+
+        $transfertsParDate = [];
+
+        foreach ($transfertsParJour as $ligne) {
+            $transfertsParDate[$ligne['jour']] =
+                (float) $ligne['total'];
+        }
+
+        $labelsGraphique = [];
+        $gainsRetraitsGraphique = [];
+        $gainsTransfertsGraphique = [];
+
+        for ($i = 29; $i >= 0; $i--) {
+            $date = date(
+                'Y-m-d',
+                strtotime("-{$i} days")
+            );
+
+            $labelsGraphique[] = date(
+                'd/m',
+                strtotime($date)
+            );
+
+            $gainsRetraitsGraphique[] =
+                $retraitsParDate[$date] ?? 0;
+
+            $gainsTransfertsGraphique[] =
+                $transfertsParDate[$date] ?? 0;
+        }
+
+        return view('operateur/gestion', [
+            'gainTotal'                  => $gainTotal,
+            'gainRetraits'               => $gainRetraits,
+            'gainTransferts'             => $gainTransferts,
+            'totalOperations'            => $totalOperations,
+            'montantTotal'               => $montantTotal,
+            'totalFrais'                 => $totalFrais,
+            'comptesActifs'              => $comptesActifs,
+            'labelsGraphique'            => $labelsGraphique,
+            'gainsRetraitsGraphique'     => $gainsRetraitsGraphique,
+            'gainsTransfertsGraphique'   => $gainsTransfertsGraphique,
+        ]);
     }
 
     public function showFormLogin(): string

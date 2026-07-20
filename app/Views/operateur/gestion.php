@@ -156,10 +156,6 @@
 
                 <div class="card-body-content">
 
-                    <span class="card-counter">
-                        <?= esc($nombrePrefixes ?? 0) ?>
-                    </span>
-
                     <h3>Configuration préfixe</h3>
 
                     <p>
@@ -201,10 +197,6 @@
                 </div>
 
                 <div class="card-body-content">
-
-                    <span class="card-counter">
-                        <?= esc($nombreTypesOperations ?? 0) ?>
-                    </span>
 
                     <h3>Types d'opérations</h3>
 
@@ -248,10 +240,6 @@
 
                 <div class="card-body-content">
 
-                    <span class="card-counter">
-                        <?= esc($nombreBaremes ?? 0) ?>
-                    </span>
-
                     <h3>Gestion des frais</h3>
 
                     <p>
@@ -293,10 +281,6 @@
                 </div>
 
                 <div class="card-body-content">
-
-                    <span class="card-counter">
-                        <?= esc($nombreComptes ?? 0) ?>
-                    </span>
 
                     <h3>Comptes clients</h3>
 
