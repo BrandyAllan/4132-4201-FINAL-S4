@@ -11,6 +11,17 @@
                     <p class="text-secondary mt-2 mb-0">Indiquez le montant à retirer de votre solde disponible.</p>
                 </div>
 
+                <!-- Ajout de l'affichage du solde -->
+                <div class="alert alert-light border text-center mb-4 p-3">
+                    <span class="text-muted d-block small">Solde disponible :</span>
+                    <span class="fs-4 fw-bold text-primary"><?= number_format($solde, 2, ',', ' ') ?> Ar</span>
+                </div>
+
+                <!-- Zone pour les frais dynamiques -->
+                <div id="frais-container" class="mb-4 text-center p-2" style="display: none;">
+                    <span class="text-secondary small">Frais appliqués : </span>
+                    <span id="montant-frais" class="fw-bold text-danger">0 Ar</span>
+                </div>
                 <!-- Messages d'erreurs Flashdata -->
                 <?php if (session()->getFlashdata('errors')): ?>
                     <div class="alert alert-danger rounded-4 border-0 p-3 mb-4">
@@ -60,4 +71,25 @@
             </div>
         </div>
         
+<script>
+    const baremesBruts = <?= json_encode($bareme) ?>; 
+    const baremes = typeof baremesBruts === 'string' ? JSON.parse(baremesBruts) : baremesBruts;
+    
+    const inputMontant = document.getElementById('montant');
+    const containerFrais = document.getElementById('frais-container');
+    const spanFrais = document.getElementById('montant-frais');
+
+    inputMontant.addEventListener('input', function() {
+        const montant = parseFloat(this.value);
+        const item = baremes.find(b => montant >= Number(b.montant_min) && montant <= Number(b.montant_max));
+        
+        if (item) {
+            spanFrais.textContent = Number(item.frais).toLocaleString('fr-FR') + ' Ar';
+            containerFrais.style.display = 'block';
+        } else {
+            containerFrais.style.display = 'none';
+        }
+    });
+</script>
+
 <?= $this->endSection() ?>
