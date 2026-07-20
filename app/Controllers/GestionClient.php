@@ -126,11 +126,8 @@ class GestionClient extends BaseController
         $db = \Config\Database::connect();
         
         // ----------------------------------------------------------------
-        // DEBUT TRANSACTION
-        // ----------------------------------------------------------------
         $db->transStart();
 
-        // 2. Récupération des entités de base
         $typeOp = $db->table('types_operations')->where('code', 'DEP')->get()->getRow();
         $compte = $db->table('comptes')->where('telephone', $telephone)->get()->getRow();
 
@@ -139,23 +136,18 @@ class GestionClient extends BaseController
             return redirect()->back()->with('error', 'Erreur de configuration ou compte inactif.');
         }
 
-        // 3. Calculs des soldes
         $soldeAvant = (float) $compte->solde;
         $soldeApres = $soldeAvant + $montant;
         $reference  = $this->genererReference($typeOp->code);
 
-        // 4. Utilisation des mini-fonctions pour insérer et tracer
         $operationId = $this->insertOperation($db, $typeOp->id, $reference, null, $compte->id, $montant, 'Dépôt en espèces');
         $this->insertMouvement($db, $operationId, $compte->id, 'CREDIT', $soldeAvant, $soldeApres, $montant, 'Crédit suite à dépôt de fonds');
-        // 5. Mise à jour du solde final du compte
         $db->table('comptes')->where('id', $compte->id)->update([
             'solde'             => $soldeApres,
             'date_modification' => date('Y-m-d H:i:s')
         ]);
 
         $db->transComplete();
-        // ----------------------------------------------------------------
-        // FIN TRANSACTION
         // ----------------------------------------------------------------
 
         if ($db->transStatus() === FALSE) {
@@ -168,7 +160,6 @@ class GestionClient extends BaseController
     /////////////////////////////////////////////////////////////////////
     public function doRetrait()
     {
-        // 1. Sécurité & Validation du montant
         if (!session()->has('telephone')) {
             return redirect()->to('login/client');
         }
@@ -183,11 +174,8 @@ class GestionClient extends BaseController
         $db = \Config\Database::connect();
         
         // ----------------------------------------------------------------
-        // DEBUT TRANSACTION
-        // ----------------------------------------------------------------
         $db->transStart();
 
-        // 2. Récupération du type 'RET' et du compte
         $typeOp = $db->table('types_operations')->where('code', 'RET')->get()->getRow();
         $compte = $db->table('comptes')->where('telephone', $telephone)->get()->getRow();
 
@@ -196,21 +184,17 @@ class GestionClient extends BaseController
             return redirect()->back()->with('error', 'Configuration manquante ou compte inactif.');
         }
 
-        // 3. VÉRIFICATION DU SOLDE : Le client a-t-il assez d'argent ?
         $soldeAvant = (float) $compte->solde;
         if ($soldeAvant < $montant) {
             $db->transRollback();
             return redirect()->back()->withInput()->with('error', 'Solde insuffisant pour effectuer ce retrait.');
         }
 
-        // 4. Calcul du nouveau solde décroissant et de la référence
         $soldeApres = $soldeAvant - $montant;
         $reference  = $this->genererReference($typeOp->code);
 
-        // 5. Enregistrements en cascades
         $operationId = $this->insertOperation($db, $typeOp->id, $reference, $compte->id, null, $montant, 'Retrait en espèces');
         $this->insertMouvement($db, $operationId, $compte->id, 'DEBIT', $soldeAvant, $soldeApres, $montant, 'Débit suite à retrait de fonds');
-        // 6. Mise à jour réelle du solde du compte
         $db->table('comptes')->where('id', $compte->id)->update([
             'solde'             => $soldeApres,
             'date_modification' => date('Y-m-d H:i:s')
@@ -218,14 +202,11 @@ class GestionClient extends BaseController
 
         $db->transComplete();
         // ----------------------------------------------------------------
-        // FIN TRANSACTION
-        // ----------------------------------------------------------------
 
         if ($db->transStatus() === FALSE) {
             return redirect()->back()->with('error', 'Le retrait a échoué suite à un problème technique.');
         }
 
-        // Redirection vers le dashboard avec un message flash de succès
         return redirect()->to('client/dashboard')->with('success', 'Retrait de ' . number_format($montant, 2, ',', ' ') . ' Ar effectué avec succès (Réf: ' . $reference . ').');
     }
 
@@ -249,23 +230,19 @@ class GestionClient extends BaseController
         $telDestinataire = $this->request->getPost('destinataire');
         $montant = (float) $this->request->getPost('montant');
 
-        // Sécurité : Empêcher l'envoi à soi-même
         if ($telExpediteur === $telDestinataire) {
             return redirect()->back()->withInput()->with('error', 'Vous ne pouvez pas transférer de l\'argent à votre propre numéro.');
         }
 
         $db = \Config\Database::connect();
-        
-        // DÉBUT TRANSACTION
+        // ----------------------------------------------------------------
         $db->transStart();
 
         try {
-            // 2. Récupération des entités de base (Type TRA, Expéditeur et Destinataire)
             $typeOp    = $db->table('types_operations')->where('code', 'TRA')->get()->getRow();
             $compteExp = $db->table('comptes')->where('telephone', $telExpediteur)->get()->getRow();
             $compteDest = $db->table('comptes')->where('telephone', $telDestinataire)->get()->getRow();
 
-            // Vérifications de sécurité
             if (!$compteExp || $compteExp->statut !== 'ACTIF') {
                 $db->transRollback();
                 return redirect()->back()->with('error', 'Votre compte est inactif ou introuvable.');
@@ -281,31 +258,24 @@ class GestionClient extends BaseController
                 return redirect()->back()->with('error', 'Configuration du type d\'opération "TRA" manquante.');
             }
 
-            // 3. Vérification du solde de l'expéditeur
             $soldeAvantExp = (float) $compteExp->solde;
             if ($soldeAvantExp < $montant) {
                 $db->transRollback();
                 return redirect()->back()->withInput()->with('error', 'Solde insuffisant pour effectuer ce transfert.');
             }
 
-            // 4. Calculs des nouveaux soldes
             $soldeApresExp  = $soldeAvantExp - $montant;
             $soldeAvantDest = (float) $compteDest->solde;
             $soldeApresDest = $soldeAvantDest + $montant;
             
             $reference = $this->genererReference($typeOp->code);
 
-            // 5. Utilisation des fonctions combinées !
-            // Enregistrement de l'opération globale (Source = Expéditeur, Destination = Destinataire)
             $operationId = $this->enregistrerOperation($db, $typeOp->id, $reference, $compteExp->id, $compteDest->id, $montant, 'Transfert de compte à compte');
 
-            // Mouvement DEBIT pour l'expéditeur
             $this->enregistrerMouvement($db, $operationId, $compteExp->id, 'DEBIT', $soldeAvantExp, $soldeApresExp, $montant, "Transfert envoyé au {$telDestinataire}");
             
-            // Mouvement CREDIT pour le destinataire
             $this->enregistrerMouvement($db, $operationId, $compteDest->id, 'CREDIT', $soldeAvantDest, $soldeApresDest, $montant, "Transfert reçu du {$telExpediteur}");
 
-            // 6. Double mise à jour des soldes réels dans la table 'comptes'
             $db->table('comptes')->where('id', $compteExp->id)->update([
                 'solde'             => $soldeApresExp,
                 'date_modification' => date('Y-m-d H:i:s')
@@ -316,11 +286,9 @@ class GestionClient extends BaseController
                 'date_modification' => date('Y-m-d H:i:s')
             ]);
 
-            // FIN TRANSACTION OK
             $db->transComplete();
-
+        // ----------------------------------------------------------------
         } catch (\Exception $e) {
-            // En cas de bug imprévu, on libère SQLite proprement
             $db->transRollback();
             return redirect()->back()->with('error', 'Une erreur critique est survenue : ' . $e->getMessage());
         }
