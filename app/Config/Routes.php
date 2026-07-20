@@ -32,5 +32,14 @@ $routes->get('logout/client', 'LoginClient::logout');
 $routes->group('client', function ($routes) {
     $routes->post('login', 'LoginClient::doLogin');
     $routes->get('dashboard', 'LoginClient::showDashboard');
+    $routes->get('dashboard', 'LoginClient::showDashboard');
+    $routes->get('solde', 'GestionClient::showSolde');
+    $routes->get('depot', 'GestionClient::showDepot');
+    $routes->post('depot', 'GestionClient::doDepot');
+    $routes->get('retrait', 'GestionClient::showRetrait');
+    $routes->post('retrait', 'GestionClient::doRetrait');
+    $routes->get('transfert', 'GestionClient::showTransfert');
+    $routes->post('transfert', 'GestionClient::doTransfert');
+    $routes->get('historique', 'GestionClient::showhistorique');
 });
 
