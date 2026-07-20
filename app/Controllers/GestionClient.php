@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Models\ClientModel;
 use App\Models\PrefixeModel;
+use App\Models\MouvementCompteModel;
 use App\Controllers\BaseController;
 
 class GestionClient extends BaseController
@@ -58,13 +59,27 @@ class GestionClient extends BaseController
     }
 
 
-    public function showhistorique()
+    public function showHistorique()
     {
-        if (!session()->has('telephone')) {
+        $session = session();
+        if (!$session->has('est_connecte')) {
             return redirect()->to('connexion/client');
         }
 
+        $clientId = $session->get('client_id');
+        $mouvementModel = new MouvementCompteModel(); 
+        
+        $historique = $mouvementModel->select('mouvements_comptes.*, types_operations.code as type_operation')
+                            ->join('operations', 'operations.id = mouvements_comptes.operation_id')
+                            ->join('types_operations', 'types_operations.id = operations.type_operation_id')
+                            ->where('mouvements_comptes.compte_id', $clientId)
+                            ->orderBy('mouvements_comptes.date_mouvement', 'DESC')
+                            ->findAll();
 
+        return view('client/historique', [
+            'historique' => $historique,
+            'telephone'  => $session->get('telephone')
+        ]);
     }
 
 
@@ -299,4 +314,6 @@ class GestionClient extends BaseController
 
         return redirect()->to('client/dashboard')->with('success', 'Transfert de ' . number_format($montant, 2, ',', ' ') . ' Ar envoyé avec succès à ' . $telDestinataire . ' (Réf: ' . $reference . ').');
     }
+
+
 }
