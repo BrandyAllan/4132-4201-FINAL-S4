@@ -76,8 +76,6 @@ class GestionClient extends BaseController
         return "{$codeTypeOperation}-{$date}-{$random}";
     }
     
-    
-    ///////////////////////////////////////////////////////////////////
     private function insertOperation($db, int $typeOpId, string $ref, ?int $sourceId, ?int $destId, float $montant, string $motif): int
     {
         $db->table('operations')->insert([
@@ -111,7 +109,7 @@ class GestionClient extends BaseController
         ]);
     }
     
-
+    /////////////////////////////////////////////////////////////////////
     public function doDepot()
     {
         if (!session()->has('telephone')) {
@@ -168,8 +166,6 @@ class GestionClient extends BaseController
     }
 
     /////////////////////////////////////////////////////////////////////
-
-
     public function doRetrait()
     {
         // 1. Sécurité & Validation du montant
@@ -231,5 +227,108 @@ class GestionClient extends BaseController
 
         // Redirection vers le dashboard avec un message flash de succès
         return redirect()->to('client/dashboard')->with('success', 'Retrait de ' . number_format($montant, 2, ',', ' ') . ' Ar effectué avec succès (Réf: ' . $reference . ').');
+    }
+
+    /////////////////////////////////////////////////////////////////////
+    public function doTransfert()
+    {
+        if (!session()->has('telephone')) {
+            return redirect()->to('connexion/client');
+        }
+
+        $rules = [
+            'destinataire' => 'required|numeric',
+            'montant'      => 'required|numeric|greater_than[0]'
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+        $telExpediteur = session()->get('telephone');
+        $telDestinataire = $this->request->getPost('destinataire');
+        $montant = (float) $this->request->getPost('montant');
+
+        // Sécurité : Empêcher l'envoi à soi-même
+        if ($telExpediteur === $telDestinataire) {
+            return redirect()->back()->withInput()->with('error', 'Vous ne pouvez pas transférer de l\'argent à votre propre numéro.');
+        }
+
+        $db = \Config\Database::connect();
+        
+        // DÉBUT TRANSACTION
+        $db->transStart();
+
+        try {
+            // 2. Récupération des entités de base (Type TRA, Expéditeur et Destinataire)
+            $typeOp    = $db->table('types_operations')->where('code', 'TRA')->get()->getRow();
+            $compteExp = $db->table('comptes')->where('telephone', $telExpediteur)->get()->getRow();
+            $compteDest = $db->table('comptes')->where('telephone', $telDestinataire)->get()->getRow();
+
+            // Vérifications de sécurité
+            if (!$compteExp || $compteExp->statut !== 'ACTIF') {
+                $db->transRollback();
+                return redirect()->back()->with('error', 'Votre compte est inactif ou introuvable.');
+            }
+
+            if (!$compteDest || $compteDest->statut !== 'ACTIF') {
+                $db->transRollback();
+                return redirect()->back()->withInput()->with('error', 'Le numéro du destinataire est introuvable ou inactif.');
+            }
+
+            if (!$typeOp) {
+                $db->transRollback();
+                return redirect()->back()->with('error', 'Configuration du type d\'opération "TRA" manquante.');
+            }
+
+            // 3. Vérification du solde de l'expéditeur
+            $soldeAvantExp = (float) $compteExp->solde;
+            if ($soldeAvantExp < $montant) {
+                $db->transRollback();
+                return redirect()->back()->withInput()->with('error', 'Solde insuffisant pour effectuer ce transfert.');
+            }
+
+            // 4. Calculs des nouveaux soldes
+            $soldeApresExp  = $soldeAvantExp - $montant;
+            $soldeAvantDest = (float) $compteDest->solde;
+            $soldeApresDest = $soldeAvantDest + $montant;
+            
+            $reference = $this->genererReference($typeOp->code);
+
+            // 5. Utilisation des fonctions combinées !
+            // Enregistrement de l'opération globale (Source = Expéditeur, Destination = Destinataire)
+            $operationId = $this->enregistrerOperation($db, $typeOp->id, $reference, $compteExp->id, $compteDest->id, $montant, 'Transfert de compte à compte');
+
+            // Mouvement DEBIT pour l'expéditeur
+            $this->enregistrerMouvement($db, $operationId, $compteExp->id, 'DEBIT', $soldeAvantExp, $soldeApresExp, $montant, "Transfert envoyé au {$telDestinataire}");
+            
+            // Mouvement CREDIT pour le destinataire
+            $this->enregistrerMouvement($db, $operationId, $compteDest->id, 'CREDIT', $soldeAvantDest, $soldeApresDest, $montant, "Transfert reçu du {$telExpediteur}");
+
+            // 6. Double mise à jour des soldes réels dans la table 'comptes'
+            $db->table('comptes')->where('id', $compteExp->id)->update([
+                'solde'             => $soldeApresExp,
+                'date_modification' => date('Y-m-d H:i:s')
+            ]);
+
+            $db->table('comptes')->where('id', $compteDest->id)->update([
+                'solde'             => $soldeApresDest,
+                'date_modification' => date('Y-m-d H:i:s')
+            ]);
+
+            // FIN TRANSACTION OK
+            $db->transComplete();
+
+        } catch (\Exception $e) {
+            // En cas de bug imprévu, on libère SQLite proprement
+            $db->transRollback();
+            return redirect()->back()->with('error', 'Une erreur critique est survenue : ' . $e->getMessage());
+        }
+
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', 'Le transfert a échoué suite à un problème technique.');
+        }
+
+        return redirect()->to('client/dashboard')->with('success', 'Transfert de ' . number_format($montant, 2, ',', ' ') . ' Ar envoyé avec succès à ' . $telDestinataire . ' (Réf: ' . $reference . ').');
     }
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Faire un Retrait — MadaCash</title>
+    <title>Transférer de l'argent — MadaCash</title>
 
     <link href="<?= base_url('assets/css/bootstrap.min.css') ?>" rel="stylesheet">
     <link href="<?= base_url('assets/css/bootstrap-icons.min.css') ?>" rel="stylesheet">
@@ -30,8 +30,8 @@
             <div class="login-card">
                 
                 <div class="login-header text-center mb-4">
-                    <h2>Retirer des espèces</h2>
-                    <p class="text-secondary mt-2 mb-0">Indiquez le montant à retirer de votre solde disponible.</p>
+                    <h2>Envoyer de l'argent</h2>
+                    <p class="text-secondary mt-2 mb-0">Transférez instantanément des fonds vers un autre compte MadaCash.</p>
                 </div>
 
                 <!-- Messages d'erreurs Flashdata -->
@@ -52,31 +52,49 @@
                     </div>
                 <?php endif; ?>
 
-                <!-- Formulaire de Retrait -->
-                <form action="<?= base_url('client/retrait') ?>" method="POST">
+                <!-- Formulaire de Transfert -->
+                <form action="<?= base_url('client/transfert') ?>" method="POST">
                     <?= csrf_field() ?>
 
-                    <div class="mb-4">
-                        <label for="montant" class="form-label-custom">MONTANT À RETIRER (AR)</label>
+                    <!-- Champ Destinataire -->
+                    <div class="mb-3">
+                        <label for="destinataire" class="form-label-custom">NUMÉRO DU DESTINATAIRE</label>
                         <div class="input-group-custom">
-                            <span class="input-icon"><i class="bi bi-dash-circle-fill text-danger"></i></span>
+                            <span class="input-icon"><i class="bi bi-telephone"></i></span>
                             <input 
-                                type="number" 
-                                name="montant" 
-                                id="montant" 
+                                type="text" 
+                                name="destinataire" 
+                                id="destinataire" 
                                 class="form-control-custom" 
-                                placeholder="Ex: 20000"
-                                min="1"
-                                step="any"
-                                value="<?= old('montant') ?>"
+                                placeholder="Ex: 034XXXXXXX"
+                                value="<?= old('destinataire') ?>"
                                 required
                                 autofocus
                             >
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-submit-custom text-uppercase btn-danger bg-dark border-dark">
-                        Confirmer le retrait <i class="bi bi-arrow-up-right ms-2"></i>
+                    <!-- Champ Montant -->
+                    <div class="mb-4">
+                        <label for="montant" class="form-label-custom">MONTANT À ENVOYER (AR)</label>
+                        <div class="input-group-custom">
+                            <span class="input-icon"><i class="bi bi-arrow-left-right text-primary"></i></span>
+                            <input 
+                                type="number" 
+                                name="montant" 
+                                id="montant" 
+                                class="form-control-custom" 
+                                placeholder="Ex: 15000"
+                                min="1"
+                                step="any"
+                                value="<?= old('montant') ?>"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit-custom text-uppercase btn-primary">
+                        Valider le transfert <i class="bi bi-send ms-2"></i>
                     </button>
                 </form>
                 

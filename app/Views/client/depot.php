@@ -102,5 +102,5 @@
     </footer>
 
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
-</body>
+    <script src="<?= base_url('assets/js/validation_client.js') ?>"></script></body>
 </html>
