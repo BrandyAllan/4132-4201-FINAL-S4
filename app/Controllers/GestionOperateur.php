@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 use App\Models\UtilisateurModel;
+use App\Models\PrefixeModel;
 
 class GestionOperateur extends BaseController
 {
@@ -15,9 +16,11 @@ class GestionOperateur extends BaseController
         return view('operateur/login');
     }
 
-    public function showFormPrefixe(): string
+    public function showPrefixe(): string
     {
-        return view('operateur/ajouter-prefixe');
+        $prefixeModel = new PrefixeModel();
+        $prefixes = $prefixeModel->findAll();
+        return view('operateur/prefixe', ['prefixes' => $prefixes]);
     }
 
     public function showFormCompte(): string
@@ -56,9 +59,37 @@ class GestionOperateur extends BaseController
         return redirect()->to(site_url('/'));
     }
 
-    public function addPrefixe() {
+    public function ajouterPrefixe() {
         $prefixe = $this->request->getPost('prefixe');
 
+        $prefixeModel = new PrefixeModel();
+        $prefixeModel->insert(['prefixe' => $prefixe, 'actif' => 1]);
+
+        return redirect()->back()->with('success', 'Préfixe ajouté avec succès.');
+    }
+
+    public function modifierPrefixe() {
+        $id = $this->request->getPost('id');
+        $prefixe = $this->request->getPost('prefixe');
+
+        $prefixeModel = new PrefixeModel();
+        $prefixeModel->update($id, ['prefixe' => $prefixe]);
+
+        return redirect()->back()->with('success', 'Préfixe modifié avec succès.');
+    }
+
+    public function desactiverPrefixe($id) {
+        $prefixeModel = new PrefixeModel();
+        $prefixeModel->update($id, ['actif' => 0]);
+
+        return redirect()->back()->with('success', 'Préfixe supprimé avec succès.');
+    }
+
+    public function activerPrefixe($id) {
+        $prefixeModel = new PrefixeModel();
+        $prefixeModel->update($id, ['actif' => 1]);
+
+        return redirect()->back()->with('success', 'Préfixe activé avec succès.');
     }
 
 }
