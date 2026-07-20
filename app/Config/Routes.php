@@ -1,7 +1,7 @@
 <?php
 
 use CodeIgniter\Router\RouteCollection;
-
+use App\Controllers\GestionOperateur;
 /**
  * @var RouteCollection $routes
  */
