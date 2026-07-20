@@ -117,7 +117,7 @@
         <div class="sidebar-footer">
 
             <a
-                href="<?= site_url('logout') ?>"
+                href="<?= site_url('logout/admin') ?>"
                 class="logout-link"
             >
                 <i class="bi bi-box-arrow-left"></i>

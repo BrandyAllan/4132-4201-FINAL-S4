@@ -51,6 +51,11 @@ class GestionOperateur extends BaseController
         }
     }
 
+    public function logout() {
+        session()->remove('utilisateur');
+        return redirect()->to(site_url('/'));
+    }
+
     public function addPrefixe() {
         $prefixe = $this->request->getPost('prefixe');
 
