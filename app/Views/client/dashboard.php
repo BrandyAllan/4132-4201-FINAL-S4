@@ -144,7 +144,7 @@
     <!-- Footer MadaCash uniforme -->
     <footer class="py-4 text-center text-muted border-top bg-white mt-auto border-light">
         <div class="container">
-            <small class="copyright">&copy; <?= date('Y') ?> Examen Projet Final - S4 Info & Design. Tous droits réservés.</small>
+            <small class="copyright">&copy; <?= date('Y') ?> Examen Projet Final - S4 Info & Design. 4132 - 4201</small>
         </div>
     </footer>
 
