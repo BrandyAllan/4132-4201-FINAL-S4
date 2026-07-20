@@ -5,6 +5,8 @@ use App\Models\UtilisateurModel;
 use App\Models\PrefixeModel;
 use App\Models\TypeOperationModel;
 use App\Models\BaremeFraisModel;
+use App\Models\ClientModel;
+use App\Models\OperateurModel;
 
 class GestionOperateur extends BaseController
 {
@@ -44,13 +46,9 @@ class GestionOperateur extends BaseController
         $gainTotal = $totalFrais;
 
         $resultatGainRetraits = $db
-            ->table('operations o')
-            ->selectSum('o.frais', 'gain_retraits')
-            ->join(
-                'types_operations t',
-                't.id = o.type_operation_id'
-            )
-            ->where('t.code', 'RETRAIT')
+            ->table('operations')
+            ->selectSum('frais', 'gain_retraits')
+            ->where('type_operation_id', 1)
             ->get()
             ->getRowArray();
 
@@ -59,13 +57,9 @@ class GestionOperateur extends BaseController
         );
 
         $resultatGainTransferts = $db
-            ->table('operations o')
-            ->selectSum('o.frais', 'gain_transferts')
-            ->join(
-                'types_operations t',
-                't.id = o.type_operation_id'
-            )
-            ->where('t.code', 'TRANSFERT')
+            ->table('operations')
+            ->selectSum('frais', 'gain_transferts')
+            ->where('type_operation_id', 3)
             ->get()
             ->getRowArray();
 
@@ -74,49 +68,41 @@ class GestionOperateur extends BaseController
         );
 
         $retraitsParJour = $db
-            ->table('operations o')
+            ->table('operations')
             ->select(
-                'DATE(o.date_operation) AS jour, '
-                . 'SUM(o.frais) AS total',
+                'DATE(date_operation) AS jour, '
+                . 'SUM(frais) AS total',
                 false
             )
-            ->join(
-                'types_operations t',
-                't.id = o.type_operation_id'
-            )
-            ->where('t.code', 'RETRAIT')
+            ->where('type_operation_id', 1)
             ->where(
-                'o.date_operation >=',
+                'date_operation >=',
                 date(
                     'Y-m-d 00:00:00',
                     strtotime('-29 days')
                 )
             )
-            ->groupBy('DATE(o.date_operation)')
+            ->groupBy('DATE(date_operation)')
             ->orderBy('jour', 'ASC')
             ->get()
             ->getResultArray();
 
         $transfertsParJour = $db
-            ->table('operations o')
+            ->table('operations')
             ->select(
-                'DATE(o.date_operation) AS jour, '
-                . 'SUM(o.frais) AS total',
+                'DATE(date_operation) AS jour, '
+                . 'SUM(frais) AS total',
                 false
             )
-            ->join(
-                'types_operations t',
-                't.id = o.type_operation_id'
-            )
-            ->where('t.code', 'TRANSFERT')
+            ->where('type_operation_id', 3)
             ->where(
-                'o.date_operation >=',
+                'date_operation >=',
                 date(
                     'Y-m-d 00:00:00',
                     strtotime('-29 days')
                 )
             )
-            ->groupBy('DATE(o.date_operation)')
+            ->groupBy('DATE(date_operation)')
             ->orderBy('jour', 'ASC')
             ->get()
             ->getResultArray();
@@ -157,17 +143,80 @@ class GestionOperateur extends BaseController
                 $transfertsParDate[$date] ?? 0;
         }
 
+        $gainCommissions = $db->table('operations o')
+            ->select(
+                'COALESCE(SUM(
+                    o.montant * b.commission / 100
+                ), 0) AS total_commission',
+                false
+            )
+            ->join(
+                'types_operations t',
+                't.id = o.type_operation_id'
+            )
+            ->join(
+                'baremes_frais b',
+                'b.type_operation_id = o.type_operation_id
+                AND o.montant >= b.montant_min
+                AND (
+                    b.montant_max IS NULL
+                    OR o.montant <= b.montant_max
+                )',
+                'left'
+            )
+            ->where('t.code', 'TRANS')
+            ->where('o.statut', 'VALIDEE')
+            ->where('b.actif', 1)
+            ->get()
+            ->getRow()
+            ->total_commission ?? 0;
+
+        $gainsCommissionsGraphique = $db->query("
+            SELECT
+                strftime('%m', o.date_operation) AS mois,
+
+                COALESCE(
+                    SUM(
+                        o.montant * b.commission / 100
+                    ),
+                    0
+                ) AS total
+
+            FROM operations o
+
+            INNER JOIN types_operations t
+                ON t.id = o.type_operation_id
+
+            INNER JOIN baremes_frais b
+                ON b.type_operation_id = o.type_operation_id
+                AND o.montant >= b.montant_min
+                AND (
+                    b.montant_max IS NULL
+                    OR o.montant <= b.montant_max
+                )
+
+            WHERE o.statut = 'VALIDEE'
+            AND t.code = 'TRANS'
+            AND b.actif = 1
+
+            GROUP BY strftime('%m', o.date_operation)
+
+            ORDER BY strftime('%m', o.date_operation)
+        ")->getResultArray();
+
         return view('operateur/gestion', [
-            'gainTotal'                  => $gainTotal,
-            'gainRetraits'               => $gainRetraits,
-            'gainTransferts'             => $gainTransferts,
-            'totalOperations'            => $totalOperations,
-            'montantTotal'               => $montantTotal,
-            'totalFrais'                 => $totalFrais,
-            'comptesActifs'              => $comptesActifs,
-            'labelsGraphique'            => $labelsGraphique,
-            'gainsRetraitsGraphique'     => $gainsRetraitsGraphique,
-            'gainsTransfertsGraphique'   => $gainsTransfertsGraphique,
+            'gainTotal'                => $gainTotal,
+            'gainRetraits'             => $gainRetraits,
+            'gainTransferts'           => $gainTransferts,
+            'totalOperations'          => $totalOperations,
+            'montantTotal'             => $montantTotal,
+            'totalFrais'               => $totalFrais,
+            'comptesActifs'            => $comptesActifs,
+            'labelsGraphique'          => $labelsGraphique,
+            'gainsRetraitsGraphique'   => $gainsRetraitsGraphique,
+            'gainsTransfertsGraphique' => $gainsTransfertsGraphique,
+            'gainsCommissions' => $gainCommissions,
+            'gainsCommissionsGraphique' => $gainsCommissionsGraphique,
         ]);
     }
 
@@ -180,7 +229,11 @@ class GestionOperateur extends BaseController
     {
         $prefixeModel = new PrefixeModel();
         $prefixes = $prefixeModel->findAll();
-        return view('operateur/prefixe', ['prefixes' => $prefixes]);
+
+        $operateurModel = new OperateurModel();
+        $operateurs = $operateurModel->findAll();
+
+        return view('operateur/prefixe', ['prefixes' => $prefixes, 'operateurs' => $operateurs]);
     }
 
     public function showFormCompte(): string
@@ -232,6 +285,8 @@ class GestionOperateur extends BaseController
         $prefixe = trim(
             (string) $this->request->getPost('prefixe')
         );
+        $operateurId = (int) $this->request
+            ->getPost('operateur_id');
 
         if ($prefixe === '') {
             return redirect()
@@ -240,6 +295,16 @@ class GestionOperateur extends BaseController
                 ->with(
                     'error',
                     'Le préfixe est obligatoire.'
+                );
+        }
+
+        if ($operateurId <= 0) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Veuillez sélectionner un opérateur.'
                 );
         }
 
@@ -259,9 +324,35 @@ class GestionOperateur extends BaseController
                 );
         }
 
-        $prefixeModel->insert([
-            'prefixe' => $prefixe,
-            'actif'   => 1,
+        $operateurModel = new OperateurModel();
+
+        $operateur = $operateurModel->find($operateurId);
+
+        if ($operateur === null) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Opérateur introuvable.'
+                );
+        }
+
+        if ((int) $operateur['actif'] !== 1) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Cet opérateur est inactif.'
+                );
+        }
+
+        $insertion = $prefixeModel->insert([
+            'prefixe'       => $prefixe,
+            'actif'         => 1,
+            'operateur_id'  => $operateurId,
+            'date_creation' => date('Y-m-d H:i:s'),
         ]);
 
         return redirect()
@@ -767,6 +858,8 @@ class GestionOperateur extends BaseController
         $fraisSaisi = trim(
             (string) $this->request->getPost('frais')
         );
+        
+        $commission = (double) $this->request->getPost('commision');
 
         $actif = (int) $this->request->getPost('actif');
 
@@ -1036,5 +1129,101 @@ class GestionOperateur extends BaseController
                 'success',
                 'Le barème de transfert a été supprimé.'
             );
+    }
+
+    public function situationCompte(): string
+    {
+        $compteModel = new ClientModel();
+        $operateurModel = new OperateurModel();
+
+        $telephone = trim(
+            (string) $this->request->getGet('telephone')
+        );
+
+        $operateurId = (int) (
+            $this->request->getGet('operateur_id') ?? 0
+        );
+
+        $ordre = (string) (
+            $this->request->getGet('ordre') ?? 'telephone'
+        );
+
+        if (!in_array(
+            $ordre,
+            ['telephone', 'operateur'],
+            true
+        )) {
+            $ordre = 'telephone';
+        }
+
+        $requete = $compteModel
+            ->select([
+                'comptes.id',
+                'comptes.telephone',
+                'comptes.solde',
+                'comptes.statut',
+                'comptes.date_creation',
+                'prefixes_operateur.prefixe',
+                'operateurs.id AS operateur_id',
+                'operateurs.nom AS operateur_nom',
+                'operateurs.code AS operateur_code',
+            ])
+            ->join(
+                'prefixes_operateur',
+                "SUBSTR(
+                    comptes.telephone,
+                    1,
+                    LENGTH(prefixes_operateur.prefixe)
+                ) = prefixes_operateur.prefixe",
+                'left',
+                false
+            )
+            ->join(
+                'operateurs',
+                'operateurs.id = prefixes_operateur.operateur_id',
+                'left'
+            );
+
+        if ($telephone !== '') {
+            $requete->like(
+                'comptes.telephone',
+                $telephone
+            );
+        }
+
+        if ($operateurId > 0) {
+            $requete->where(
+                'prefixes_operateur.operateur_id',
+                $operateurId
+            );
+        }
+
+        if ($ordre === 'operateur') {
+            $requete
+                ->orderBy('operateurs.nom', 'ASC')
+                ->orderBy('comptes.telephone', 'ASC');
+        } else {
+            $requete
+                ->orderBy('comptes.telephone', 'ASC');
+        }
+
+        $comptes = $requete->paginate(
+            20,
+            'situation_comptes'
+        );
+
+        $operateurs = $operateurModel
+            ->where('actif', 1)
+            ->orderBy('nom', 'ASC')
+            ->findAll();
+
+        return view('operateur/situation-compte', [
+            'comptes'            => $comptes,
+            'operateurs'         => $operateurs,
+            'pager'              => $compteModel->pager,
+            'telephone'          => $telephone,
+            'operateurSelection' => $operateurId,
+            'ordre'              => $ordre,
+        ]);
     }
 }

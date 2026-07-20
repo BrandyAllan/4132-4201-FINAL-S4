@@ -375,6 +375,28 @@
 
     </div>
 
+    <div class="summary-card">
+
+        <span class="summary-icon transfer">
+            <i class="bi bi-send-fill"></i>
+        </span>
+
+        <div>
+            <span>Gains sur commissions (autres opérateurs)</span>
+
+            <strong>
+                <?= number_format(
+                    $gainCommisions ?? 0,
+                    0,
+                    ',',
+                    ' '
+                ) ?>
+                Ar
+            </strong>
+        </div>
+
+    </div>
+
 </section>
 
 <section class="dashboard-section charts-section">
@@ -504,6 +526,73 @@
                 <div class="chart-container">
 
                     <canvas id="transferChart"></canvas>
+
+                </div>
+
+            </article>
+
+        </div>
+
+        <div class="col-xl-4">
+
+            <article class="chart-card">
+
+                <div class="chart-card-header">
+
+                    <div>
+
+                        <span class="chart-label">
+                            COMMISSIONS
+                        </span>
+
+                        <h3>
+                            Gains autres opérateurs
+                        </h3>
+
+                        <p>
+                            Évolution des commissions
+                            générées par les transferts
+                            vers les autres opérateurs.
+                        </p>
+
+                    </div>
+
+                    <span class="chart-icon commission">
+
+                        <i class="bi bi-cash-stack"></i>
+
+                    </span>
+
+                </div>
+
+                <div class="chart-total">
+
+                    <strong>
+
+                        <?= number_format(
+                            $gainCommissions ?? 0,
+                            0,
+                            ',',
+                            ' '
+                        ) ?>
+
+                        Ar
+
+                    </strong>
+
+                    <span class="positive-evolution">
+
+                        <i class="bi bi-arrow-up"></i>
+
+                        Commissions encaissées
+
+                    </span>
+
+                </div>
+
+                <div class="chart-container">
+
+                    <canvas id="commissionChart"></canvas>
 
                 </div>
 

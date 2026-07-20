@@ -100,7 +100,6 @@
 
                     <div class="row g-3">
 
-                        <!-- Montant minimum -->
                         <div class="col-lg-3 col-md-6">
 
                             <label
@@ -133,7 +132,6 @@
 
                         </div>
 
-                        <!-- Montant maximum -->
                         <div class="col-lg-3 col-md-6">
 
                             <label
@@ -168,7 +166,6 @@
 
                         </div>
 
-                        <!-- Frais -->
                         <div class="col-lg-3 col-md-6">
 
                             <label
@@ -201,7 +198,29 @@
 
                         </div>
 
-                        <!-- Statut -->
+                        <div class="col-md-3">
+
+                            <label class="form-label">
+                                Commission (%)
+                            </label>
+
+                            <div class="input-group">
+
+                                <input
+                                    type="number"
+                                    class="form-control"
+                                    name="commission"
+                                    min="0"
+                                    step="0.01"
+                                    value="<?= old('commission', 0) ?>"
+                                >
+
+                                <span class="input-group-text">%</span>
+
+                            </div>
+
+                        </div>
+
                         <div class="col-lg-3 col-md-6">
 
                             <label
@@ -255,7 +274,6 @@
 
         </div>
 
-        <!-- Tableau récapitulatif -->
         <div class="card border-0 shadow-sm">
 
             <div class="card-header bg-white border-0 pt-4 px-4">
@@ -312,6 +330,7 @@
                                 <th>Montant minimum</th>
                                 <th>Montant maximum</th>
                                 <th>Frais</th>
+                                <th>Commission</th>
                                 <th>Statut</th>
                                 <th>Date de création</th>
                                 <th class="text-end pe-4">Actions</th>
@@ -373,6 +392,15 @@
                                                 ) ?>
                                                 Ar
                                             </span>
+                                        </td>
+
+                                        <td>
+                                            <?= number_format(
+                                                $bareme['commission'],
+                                                2,
+                                                ',',
+                                                ' '
+                                            ) ?> %
                                         </td>
 
                                         <td>
