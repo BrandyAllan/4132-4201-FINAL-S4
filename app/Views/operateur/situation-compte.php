@@ -57,76 +57,6 @@
                         >
                     </div>
 
-                    <div class="col-12 col-md-4">
-                        <label
-                            for="operateur_id"
-                            class="form-label"
-                        >
-                            Opérateur
-                        </label>
-
-                        <select
-                            class="form-select"
-                            id="operateur_id"
-                            name="operateur_id"
-                        >
-                            <option value="">
-                                Tous les opérateurs
-                            </option>
-
-                            <?php foreach (
-                                $operateurs as $operateur
-                            ): ?>
-                                <option
-                                    value="<?= esc(
-                                        $operateur['id']
-                                    ) ?>"
-                                    <?= (int) $operateurSelection
-                                        === (int) $operateur['id']
-                                            ? 'selected'
-                                            : '' ?>
-                                >
-                                    <?= esc(
-                                        $operateur['nom']
-                                    ) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div class="col-12 col-md-4">
-                        <label
-                            for="ordre"
-                            class="form-label"
-                        >
-                            Trier par
-                        </label>
-
-                        <select
-                            class="form-select"
-                            id="ordre"
-                            name="ordre"
-                        >
-                            <option
-                                value="telephone"
-                                <?= $ordre === 'telephone'
-                                    ? 'selected'
-                                    : '' ?>
-                            >
-                                Numéro de téléphone
-                            </option>
-
-                            <option
-                                value="operateur"
-                                <?= $ordre === 'operateur'
-                                    ? 'selected'
-                                    : '' ?>
-                            >
-                                Opérateur
-                            </option>
-                        </select>
-                    </div>
-
                     <div class="col-12">
                         <div class="d-flex flex-wrap gap-2">
 
@@ -140,7 +70,7 @@
 
                             <a
                                 href="<?= site_url(
-                                    'operateur/situation-compte'
+                                    'operateur/comptes'
                                 ) ?>"
                                 class="btn btn-outline-secondary"
                             >
@@ -156,16 +86,6 @@
                             >
                                 <i class="bi bi-sort-alpha-down"></i>
                                 Ordre téléphone
-                            </button>
-
-                            <button
-                                type="submit"
-                                name="ordre"
-                                value="operateur"
-                                class="btn btn-outline-primary"
-                            >
-                                <i class="bi bi-building"></i>
-                                Ordre opérateur
                             </button>
 
                         </div>

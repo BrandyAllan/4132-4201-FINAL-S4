@@ -9,7 +9,12 @@ class PrefixeModel extends Model
     protected $table            = 'prefixes_operateur';
     protected $primaryKey       = 'id';
     protected $returnType       = 'array';
-    protected $allowedFields    = ['prefixe', 'actif'];
+    protected $allowedFields = [
+        'prefixe',
+        'operateur_id',
+        'actif',
+        'date_creation',
+    ];
 
 
     public function recupererPrefixesActifs(): array

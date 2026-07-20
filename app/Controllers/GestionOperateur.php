@@ -234,7 +234,8 @@ class GestionOperateur extends BaseController
         $prefixe = trim(
             (string) $this->request->getPost('prefixe')
         );
-        $operateurId = $this->request->getPost('operateur_id');
+        $operateurId = (int) $this->request
+            ->getPost('operateur_id');
 
         if ($prefixe === '') {
             return redirect()
@@ -243,6 +244,16 @@ class GestionOperateur extends BaseController
                 ->with(
                     'error',
                     'Le préfixe est obligatoire.'
+                );
+        }
+
+        if ($operateurId <= 0) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Veuillez sélectionner un opérateur.'
                 );
         }
 
@@ -264,10 +275,9 @@ class GestionOperateur extends BaseController
 
         $operateurModel = new OperateurModel();
 
-        $operateur = $operateurModel
-            ->where('id', $operateurId);
+        $operateur = $operateurModel->find($operateurId);
 
-        if(!$operateur) {
+        if ($operateur === null) {
             return redirect()
                 ->back()
                 ->withInput()
@@ -277,10 +287,21 @@ class GestionOperateur extends BaseController
                 );
         }
 
-        $prefixeModel->insert([
-            'prefixe' => $prefixe,
-            'actif'   => 1,
-            ''
+        if ((int) $operateur['actif'] !== 1) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Cet opérateur est inactif.'
+                );
+        }
+
+        $insertion = $prefixeModel->insert([
+            'prefixe'       => $prefixe,
+            'actif'         => 1,
+            'operateur_id'  => $operateurId,
+            'date_creation' => date('Y-m-d H:i:s'),
         ]);
 
         return redirect()
@@ -786,6 +807,8 @@ class GestionOperateur extends BaseController
         $fraisSaisi = trim(
             (string) $this->request->getPost('frais')
         );
+        
+        $commission = (double) $this->request->getPost('commision');
 
         $actif = (int) $this->request->getPost('actif');
 
