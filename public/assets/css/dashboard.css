@@ -1,0 +1,99 @@
+/* Intégration globale des variables de la charte MadaCash */
+.fw-extrabold {
+    font-weight: 800;
+}
+
+.fs-7 {
+    font-size: 0.85rem;
+}
+
+body {
+    background: var(--light) !important;
+    color: var(--dark) !important;
+}
+
+.dashboard-container {
+    margin-top: 3.5rem;
+    margin-bottom: 4rem;
+}
+
+/* En-tête de bienvenue aux couleurs de la marque */
+.welcome-card {
+    background: linear-gradient(130deg, #f4762f 0%, #e94e18 54%, #ca3607 100%) !important;
+    border: none !important;
+    border-radius: 24px !important;
+    box-shadow: var(--shadow) !important;
+    color: var(--white);
+}
+
+.status-badge {
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--white);
+}
+
+/* Cartes d'action adaptées au style des modules Home & Services */
+.action-card {
+    background: var(--white) !important;
+    border: 1px solid #eceef3 !important;
+    border-radius: 24px !important;
+    box-shadow: none;
+    padding: 2.2rem 1.5rem !important;
+    height: 100%;
+    color: var(--dark) !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease-in-out !important;
+}
+
+.action-card:hover {
+    transform: translateY(-6px) !important;
+    border-color: transparent !important;
+    box-shadow: var(--shadow) !important;
+}
+
+/* Conteneur d'icône dynamique */
+.action-icon-wrapper {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 18px;
+    color: var(--primary);
+    background: var(--primary-soft);
+    font-size: 1.5rem;
+    margin-bottom: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.action-card:hover .action-icon-wrapper {
+    background: var(--primary);
+    color: var(--white);
+}
+
+.action-card h3 {
+    font-size: 0.95rem;
+    letter-spacing: -0.02em;
+}
+
+/* Bouton Quitter */
+.btn-logout {
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    color: var(--white) !important;
+    background: transparent;
+    transition: all 0.2s ease;
+}
+
+.btn-logout:hover {
+    background: var(--white) !important;
+    color: var(--primary) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Correction de l'alignement pour l'icône de l'historique horizontal */
+.action-card.flex-row .action-icon-wrapper {
+    margin-bottom: 0 !important;
+}
