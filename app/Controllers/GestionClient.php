@@ -111,6 +111,7 @@ class GestionClient extends BaseController
         ]);
     }
 
+    
 
     ///////////////////////////////////////////////////////////////////
     private function genererReference(string $codeTypeOperation): string

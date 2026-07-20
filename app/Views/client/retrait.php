@@ -71,6 +71,7 @@
             </div>
         </div>
         
+        
 <script>
     const baremesBruts = <?= json_encode($bareme) ?>; 
     const baremes = typeof baremesBruts === 'string' ? JSON.parse(baremesBruts) : baremesBruts;

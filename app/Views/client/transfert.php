@@ -74,6 +74,7 @@
     </div>
 </div>
 
+
 <script>
     const baremes = <?= json_encode($bareme) ?>;
     const inputMontant = document.getElementById('montant');
