@@ -78,18 +78,18 @@ class GestionClient extends BaseController
     
     
     ///////////////////////////////////////////////////////////////////
-    private function enregistrerOperation($db, int $typeOpId, string $ref, ?int $compteId, float $montant): int
+    private function insertOperation($db, int $typeOpId, string $ref, ?int $sourceId, ?int $destId, float $montant, string $motif): int
     {
         $db->table('operations')->insert([
             'reference'             => $ref,
             'type_operation_id'     => $typeOpId,
-            'compte_source_id'      => null, // Aucun pour un dépôt cash
-            'compte_destination_id' => $compteId,
+            'compte_source_id'      => $sourceId,      // Peut être null (Dépôt)
+            'compte_destination_id' => $destId,        // Peut être null (Retrait)
             'montant'               => $montant,
             'frais'                 => 0,
             'montant_total'         => $montant,
             'statut'                => 'VALIDEE',
-            'motif'                 => 'Dépôt en espèces',
+            'motif'                 => $motif,
             'date_operation'        => date('Y-m-d H:i:s')
         ]);
 
@@ -97,16 +97,16 @@ class GestionClient extends BaseController
     }
 
 
-    private function enregistrerMouvement($db, int $opId, int $compteId, float $avant, float $apres, float $montant)
+    private function insertMouvement($db, int $opId, int $compteId, string $sens, float $avant, float $apres, float $montant, string $libelle)
     {
         $db->table('mouvements_comptes')->insert([
             'operation_id'    => $opId,
             'compte_id'       => $compteId,
-            'sens'            => 'CREDIT',
+            'sens'            => $sens,               // 'CREDIT' ou 'DEBIT'
             'montant'         => $montant,
             'solde_avant'     => $avant,
             'solde_apres'     => $apres,
-            'libelle'         => 'Crédit suite à dépôt de fonds',
+            'libelle'         => $libelle,
             'date_mouvement'  => date('Y-m-d H:i:s')
         ]);
     }
@@ -147,9 +147,8 @@ class GestionClient extends BaseController
         $reference  = $this->genererReference($typeOp->code);
 
         // 4. Utilisation des mini-fonctions pour insérer et tracer
-        $operationId = $this->enregistrerOperation($db, $typeOp->id, $reference, $compte->id, $montant);
-        $this->enregistrerMouvement($db, $operationId, $compte->id, $soldeAvant, $soldeApres, $montant);
-
+        $operationId = $this->insertOperation($db, $typeOp->id, $reference, null, $compte->id, $montant, 'Dépôt en espèces');
+        $this->insertMouvement($db, $operationId, $compte->id, 'CREDIT', $soldeAvant, $soldeApres, $montant, 'Crédit suite à dépôt de fonds');
         // 5. Mise à jour du solde final du compte
         $db->table('comptes')->where('id', $compte->id)->update([
             'solde'             => $soldeApres,
@@ -169,38 +168,7 @@ class GestionClient extends BaseController
     }
 
     /////////////////////////////////////////////////////////////////////
-    private function enregistrerOperationRetrait($db, int $typeOpId, string $ref, int $compteId, float $montant): int
-    {
-        $db->table('operations')->insert([
-            'reference'             => $ref,
-            'type_operation_id'     => $typeOpId,
-            'compte_source_id'      => $compteId, // Le compte source est celui du client qui retire
-            'compte_destination_id' => null,     // Pas de destination pour un retrait cash
-            'montant'               => $montant,
-            'frais'                 => 0,         // À modifier si tu intègres des frais plus tard
-            'montant_total'         => $montant,
-            'statut'                => 'VALIDEE',
-            'motif'                 => 'Retrait en espèces',
-            'date_operation'        => date('Y-m-d H:i:s')
-        ]);
 
-        return $db->insertID();
-    }
-
-
-    private function enregistrerMouvementRetrait($db, int $opId, int $compteId, float $avant, float $apres, float $montant)
-    {
-        $db->table('mouvements_comptes')->insert([
-            'operation_id'    => $opId,
-            'compte_id'       => $compteId,
-            'sens'            => 'DEBIT', // Un retrait diminue le compte (DEBIT)
-            'montant'         => $montant,
-            'solde_avant'     => $avant,
-            'solde_apres'     => $apres,
-            'libelle'         => 'Débit suite à retrait de fonds',
-            'date_mouvement'  => date('Y-m-d H:i:s')
-        ]);
-    }
 
     public function doRetrait()
     {
@@ -244,9 +212,8 @@ class GestionClient extends BaseController
         $reference  = $this->genererReference($typeOp->code);
 
         // 5. Enregistrements en cascades
-        $operationId = $this->enregistrerOperationRetrait($db, $typeOp->id, $reference, $compte->id, $montant);
-        $this->enregistrerMouvementRetrait($db, $operationId, $compte->id, $soldeAvant, $soldeApres, $montant);
-
+        $operationId = $this->insertOperation($db, $typeOp->id, $reference, $compte->id, null, $montant, 'Retrait en espèces');
+        $this->insertMouvement($db, $operationId, $compte->id, 'DEBIT', $soldeAvant, $soldeApres, $montant, 'Débit suite à retrait de fonds');
         // 6. Mise à jour réelle du solde du compte
         $db->table('comptes')->where('id', $compte->id)->update([
             'solde'             => $soldeApres,

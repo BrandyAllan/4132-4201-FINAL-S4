@@ -8,7 +8,8 @@ use App\Controllers\BaseController;
 
 class LoginClient extends BaseController
 {
-    public function showLogin(): string {
+    public function showLogin(): string 
+    {
         $prefixeModel = new PrefixeModel();
         $prefixesActifs = $prefixeModel->recupererPrefixesActifs();
 
@@ -20,7 +21,8 @@ class LoginClient extends BaseController
     }
 
 
-    public function doLogin(){
+    public function doLogin()
+    {
         $session = session();
         $clientModel = new ClientModel();
         $prefixeModel = new PrefixeModel();
@@ -62,11 +64,11 @@ class LoginClient extends BaseController
         //////////////////////////////////////////////////////////////////////
         $session->set([
             'client_id'    => $compte['id'],
-            'client_tel'   => $compte['telephone'],
+            'telephone'   => $compte['telephone'],
             'est_connecte' => true
         ]);
 
-        return redirect()->to('/client/dashboard');
+        return redirect()->to('client/dashboard');
 
     }
 
@@ -74,5 +76,14 @@ class LoginClient extends BaseController
     {
         session()->destroy();
         return redirect()->to('/login');
+    }
+
+    public function showdashboard()
+    {
+        if (!session()->has('telephone')) {
+        return redirect()->to('connexion/client');
+        }
+
+        return view('client/dashboard');
     }
 }
