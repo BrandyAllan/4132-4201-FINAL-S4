@@ -204,6 +204,51 @@ class GestionOperateur extends BaseController
             ORDER BY strftime('%m', o.date_operation)
         ")->getResultArray();
 
+        $montantsParOperateur = $db->query("
+            SELECT
+                op.id AS operateur_id,
+                op.nom AS operateur,
+                op.code,
+
+                COUNT(o.id) AS nombre_transferts,
+
+                COALESCE(
+                    SUM(o.montant),
+                    0
+                ) AS montant_envoye
+
+            FROM operateurs op
+
+            INNER JOIN prefixes_operateur p
+                ON p.operateur_id = op.id
+                AND p.actif = 1
+
+            LEFT JOIN operations o
+                ON SUBSTR(
+                    o.telephone_destinataire,
+                    1,
+                    LENGTH(p.prefixe)
+                ) = p.prefixe
+
+                AND o.statut = 'VALIDEE'
+
+                AND o.type_operation_id = (
+                    SELECT id
+                    FROM types_operations
+                    WHERE code = 'TRANSFERT'
+                    LIMIT 1
+                )
+
+            WHERE op.actif = 1
+
+            GROUP BY
+                op.id,
+                op.nom,
+                op.code
+
+            ORDER BY montant_envoye DESC
+        ")->getResultArray();
+
         return view('operateur/gestion', [
             'gainTotal'                => $gainTotal,
             'gainRetraits'             => $gainRetraits,
@@ -217,6 +262,7 @@ class GestionOperateur extends BaseController
             'gainsTransfertsGraphique' => $gainsTransfertsGraphique,
             'gainsCommissions' => $gainCommissions,
             'gainsCommissionsGraphique' => $gainsCommissionsGraphique,
+            'montantsParOperateur' => $montantsParOperateur,
         ]);
     }
 

@@ -4,28 +4,14 @@
 
 <div class="container-fluid py-4">
 
-    <div
-        class="d-flex flex-column flex-md-row
-               justify-content-between align-items-md-center
-               gap-3 mb-4"
-    >
+    <div class="page-header mb-4 ms-4">
         <div>
-            <h1 class="h3 mb-1">
-                Situation des comptes
-            </h1>
-
-            <p class="text-secondary mb-0">
+            <span class="page-kicker">CONFIGURATION</span>
+            <h1 class="page-title">Situation des comptes</h1>
+            <p class="page-description">
                 Consultation des soldes et des opérateurs
             </p>
         </div>
-
-        <a
-            href="<?= site_url('operateur') ?>"
-            class="btn btn-outline-secondary"
-        >
-            <i class="bi bi-arrow-left"></i>
-            Tableau de bord
-        </a>
     </div>
 
     <div class="card border-0 shadow-sm mb-4">

@@ -399,6 +399,61 @@
 
 </section>
 
+<section class="row g-4 mb-4 mt-4">
+
+    <?php foreach (
+        $montantsParOperateur ?? []
+        as $ligne
+    ): ?>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-muted mb-2">
+                                Montant envoyé vers
+                            </p>
+
+                            <h5 class="fw-semibold">
+                                <?= esc($ligne['operateur']) ?>
+                            </h5>
+                        </div>
+
+                        <span class="badge bg-light text-dark">
+                            <?= esc($ligne['code']) ?>
+                        </span>
+                    </div>
+
+                    <h3 class="fw-bold mt-3 mb-2">
+                        <?= number_format(
+                            $ligne['montant_envoye'],
+                            0,
+                            ',',
+                            ' '
+                        ) ?>
+                        Ar
+                    </h3>
+
+                    <small class="text-muted">
+                        <?= number_format(
+                            $ligne['nombre_transferts'],
+                            0,
+                            ',',
+                            ' '
+                        ) ?>
+                        transfert(s) validé(s)
+                    </small>
+
+                </div>
+            </div>
+        </div>
+
+    <?php endforeach; ?>
+
+</section>
+
 <section class="dashboard-section charts-section">
 
     <div class="section-heading">
