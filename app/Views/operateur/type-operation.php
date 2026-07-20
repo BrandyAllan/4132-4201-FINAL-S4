@@ -5,16 +5,23 @@
 <div class="page-header mb-4 ms-4">
     <div>
         <span class="page-kicker">CONFIGURATION</span>
-        <h1 class="page-title">Gestion des préfixes</h1>
+
+        <h1 class="page-title">
+            Gestion des types d’opérations
+        </h1>
+
         <p class="page-description">
-            Ajoutez et gérez les préfixes téléphoniques des opérateurs.
+            Ajoutez et gérez les différents types d’opérations.
         </p>
     </div>
 </div>
 
 <?php if ($success = session()->getFlashdata('success')): ?>
+
     <div class="alert alert-success alert-dismissible fade show" role="alert">
+
         <i class="bi bi-check-circle-fill me-2"></i>
+
         <?= esc($success) ?>
 
         <button
@@ -23,12 +30,17 @@
             data-bs-dismiss="alert"
             aria-label="Fermer"
         ></button>
+
     </div>
+
 <?php endif; ?>
 
 <?php if ($error = session()->getFlashdata('error')): ?>
+
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
+
         <i class="bi bi-exclamation-circle-fill me-2"></i>
+
         <?= esc($error) ?>
 
         <button
@@ -37,9 +49,13 @@
             data-bs-dismiss="alert"
             aria-label="Fermer"
         ></button>
+
     </div>
+
 <?php endif; ?>
 
+
+<!-- Formulaire d’ajout -->
 <div class="card border-0 shadow-sm rounded-4 mb-4">
 
     <div class="card-header bg-white border-0 px-4 pt-4">
@@ -47,17 +63,19 @@
         <div class="d-flex align-items-center gap-3">
 
             <div class="form-card-icon">
-                <i class="bi bi-phone-fill"></i>
+                <i class="bi bi-arrow-left-right"></i>
             </div>
 
             <div>
+
                 <h2 class="h5 fw-bold mb-1">
-                    Ajouter un préfixe
+                    Ajouter un type d’opération
                 </h2>
 
                 <p class="text-secondary small mb-0">
-                    Enregistrez un nouveau préfixe opérateur.
+                    Enregistrez un nouveau type d’opération.
                 </p>
+
             </div>
 
         </div>
@@ -67,7 +85,7 @@
     <div class="card-body p-4">
 
         <form
-            action="<?= site_url('operateur/prefixes/ajouter') ?>"
+            action="<?= site_url('operateur/types-operations/ajouter') ?>"
             method="post"
         >
 
@@ -75,57 +93,97 @@
 
             <div class="row g-3">
 
-                <div class="col-lg-4">
+                <div class="col-lg-3">
 
-                    <label for="prefixe" class="form-label fw-semibold">
-                        Préfixe
+                    <label for="code" class="form-label fw-semibold">
+                        Code
                     </label>
 
                     <div class="input-group">
 
                         <span class="input-group-text">
-                            <i class="bi bi-telephone"></i>
+                            <i class="bi bi-hash"></i>
                         </span>
 
                         <input
                             type="text"
                             class="form-control"
-                            id="prefixe"
-                            name="prefixe"
-                            value="<?= old('prefixe') ?>"
-                            placeholder="Exemple : 032"
-                            maxlength="10"
+                            id="code"
+                            name="code"
+                            value="<?= old('code') ?>"
+                            placeholder="Exemple : RETRAIT"
+                            maxlength="30"
                             required
                         >
 
                     </div>
 
-                    <?php if (session('errors.prefixe')): ?>
+                    <?php if (session('errors.code')): ?>
+
                         <small class="text-danger">
-                            <?= esc(session('errors.prefixe')) ?>
+                            <?= esc(session('errors.code')) ?>
                         </small>
+
+                    <?php endif; ?>
+
+                </div>
+
+                <div class="col-lg-5">
+
+                    <label for="libelle" class="form-label fw-semibold">
+                        Libellé
+                    </label>
+
+                    <div class="input-group">
+
+                        <span class="input-group-text">
+                            <i class="bi bi-card-text"></i>
+                        </span>
+
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="libelle"
+                            name="libelle"
+                            value="<?= old('libelle') ?>"
+                            placeholder="Exemple : Retrait d’argent"
+                            maxlength="100"
+                            required
+                        >
+
+                    </div>
+
+                    <?php if (session('errors.libelle')): ?>
+
+                        <small class="text-danger">
+                            <?= esc(session('errors.libelle')) ?>
+                        </small>
+
                     <?php endif; ?>
 
                 </div>
 
                 <div class="col-lg-3">
 
-                    <label for="statut" class="form-label fw-semibold">
+                    <label for="actif" class="form-label fw-semibold">
                         Statut
                     </label>
 
                     <select
                         class="form-select"
-                        id="statut"
-                        name="statut"
+                        id="actif"
+                        name="actif"
+                        required
                     >
-                        <option value="ACTIF" selected>
+
+                        <option value="1" <?= old('actif') !== '0' ? 'selected' : '' ?>>
                             Actif
                         </option>
 
-                        <option value="INACTIF">
+                        <option value="0" <?= old('actif') === '0' ? 'selected' : '' ?>>
                             Inactif
                         </option>
+
                     </select>
 
                 </div>
@@ -138,16 +196,22 @@
                     type="reset"
                     class="btn btn-light rounded-pill px-4 me-2"
                 >
+
                     <i class="bi bi-arrow-counterclockwise me-2"></i>
+
                     Réinitialiser
+
                 </button>
 
                 <button
                     type="submit"
                     class="btn btn-primary-custom rounded-pill px-4"
                 >
+
                     <i class="bi bi-plus-circle-fill me-2"></i>
-                    Ajouter le préfixe
+
+                    Ajouter
+
                 </button>
 
             </div>
@@ -158,6 +222,8 @@
 
 </div>
 
+
+<!-- Liste -->
 <div class="card border-0 shadow-sm rounded-4">
 
     <div class="card-header bg-white border-0 px-4 pt-4">
@@ -168,13 +234,16 @@
         >
 
             <div>
+
                 <h2 class="h5 fw-bold mb-1">
-                    Liste des préfixes
+                    Liste des types d’opérations
                 </h2>
 
                 <p class="text-secondary small mb-0">
-                    <?= count($prefixes ?? []) ?> préfixe(s) enregistré(s)
+                    <?= count($typesOperations ?? []) ?>
+                    type(s) d’opération enregistré(s)
                 </p>
+
             </div>
 
             <div class="prefix-search">
@@ -188,7 +257,7 @@
                     <input
                         type="search"
                         class="form-control"
-                        id="searchPrefix"
+                        id="searchTypeOperation"
                         placeholder="Rechercher..."
                     >
 
@@ -206,14 +275,15 @@
 
             <table
                 class="table table-hover align-middle"
-                id="prefixTable"
+                id="typeOperationTable"
             >
 
                 <thead>
 
                     <tr>
                         <th>#</th>
-                        <th>Préfixe</th>
+                        <th>Code</th>
+                        <th>Libellé</th>
                         <th>Statut</th>
                         <th>Date de création</th>
                         <th class="text-end">Actions</th>
@@ -223,9 +293,9 @@
 
                 <tbody>
 
-                    <?php if (! empty($prefixes)): ?>
+                    <?php if (! empty($typesOperations)): ?>
 
-                        <?php foreach ($prefixes as $index => $item): ?>
+                        <?php foreach ($typesOperations as $index => $item): ?>
 
                             <tr>
 
@@ -236,25 +306,37 @@
                                 <td>
 
                                     <span class="prefix-badge">
-                                        <?= esc($item['prefixe']) ?>
+                                        <?= esc($item['code']) ?>
                                     </span>
 
                                 </td>
 
                                 <td>
+                                    <strong>
+                                        <?= esc($item['libelle']) ?>
+                                    </strong>
+                                </td>
 
-                                    <?php if ($item['actif'] === 1): ?>
+                                <td>
+
+                                    <?php if ((int) $item['actif'] === 1): ?>
 
                                         <span class="badge rounded-pill text-bg-success">
+
                                             <i class="bi bi-check-circle me-1"></i>
+
                                             Actif
+
                                         </span>
 
                                     <?php else: ?>
 
                                         <span class="badge rounded-pill text-bg-secondary">
+
                                             <i class="bi bi-x-circle me-1"></i>
+
                                             Inactif
+
                                         </span>
 
                                     <?php endif; ?>
@@ -281,27 +363,32 @@
                                 <td class="text-end">
 
                                     <a
-                                        href="<?= site_url('operateur/prefixes/modifier/' . $item['id']) ?>"
+                                        href="<?= site_url(
+                                            'operateur/types-operations/modifier/'
+                                            . $item['id']
+                                        ) ?>"
                                         class="btn btn-sm btn-outline-primary rounded-pill"
                                     >
+
                                         <i class="bi bi-pencil-square"></i>
 
                                         <span class="d-none d-xl-inline ms-1">
                                             Modifier
                                         </span>
+
                                     </a>
 
-                                    <?php if ($item['actif'] === 1): ?>
+                                    <?php if ((int) $item['actif'] === 1): ?>
 
                                         <form
                                             action="<?= site_url(
-                                                'operateur/prefixes/desactiver/'
+                                                'operateur/types-operations/desactiver/'
                                                 . $item['id']
                                             ) ?>"
-                                            method="get"
+                                            method="post"
                                             class="d-inline"
                                             onsubmit="return confirm(
-                                                'Voulez-vous vraiment désactiver ce préfixe ?'
+                                                'Voulez-vous vraiment désactiver ce type d’opération ?'
                                             );"
                                         >
 
@@ -310,13 +397,14 @@
                                             <button
                                                 type="submit"
                                                 class="btn btn-sm btn-outline-danger rounded-pill"
-                                                title="Désactiver"
                                             >
+
                                                 <i class="bi bi-slash-circle"></i>
 
                                                 <span class="d-none d-xl-inline ms-1">
                                                     Désactiver
                                                 </span>
+
                                             </button>
 
                                         </form>
@@ -325,10 +413,10 @@
 
                                         <form
                                             action="<?= site_url(
-                                                'operateur/prefixes/activer/'
+                                                'operateur/types-operations/activer/'
                                                 . $item['id']
                                             ) ?>"
-                                            method="get"
+                                            method="post"
                                             class="d-inline"
                                         >
 
@@ -337,13 +425,14 @@
                                             <button
                                                 type="submit"
                                                 class="btn btn-sm btn-outline-success rounded-pill"
-                                                title="Activer"
                                             >
+
                                                 <i class="bi bi-check-circle"></i>
 
                                                 <span class="d-none d-xl-inline ms-1">
                                                     Activer
                                                 </span>
+
                                             </button>
 
                                         </form>
@@ -365,14 +454,16 @@
                                 <div class="empty-state">
 
                                     <span class="empty-state-icon">
-                                        <i class="bi bi-phone"></i>
+                                        <i class="bi bi-arrow-left-right"></i>
                                     </span>
 
-                                    <h3>Aucun préfixe enregistré</h3>
+                                    <h3>
+                                        Aucun type d’opération enregistré
+                                    </h3>
 
                                     <p>
                                         Utilisez le formulaire ci-dessus pour
-                                        ajouter votre premier préfixe.
+                                        ajouter votre premier type d’opération.
                                     </p>
 
                                 </div>
@@ -395,26 +486,34 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const searchInput = document.getElementById('searchPrefix');
-        const table = document.getElementById('prefixTable');
+        const searchInput =
+            document.getElementById('searchTypeOperation');
+
+        const table =
+            document.getElementById('typeOperationTable');
 
         if (!searchInput || !table) {
             return;
         }
 
         searchInput.addEventListener('input', function () {
-            const searchValue = this.value.toLowerCase().trim();
-            const rows = table.querySelectorAll('tbody tr');
+            const searchValue =
+                this.value.toLowerCase().trim();
+
+            const rows =
+                table.querySelectorAll('tbody tr');
 
             rows.forEach(function (row) {
-                const rowText = row.textContent.toLowerCase();
+                const rowText =
+                    row.textContent.toLowerCase();
 
-                row.style.display = rowText.includes(searchValue)
-                    ? ''
-                    : 'none';
+                row.style.display =
+                    rowText.includes(searchValue)
+                        ? ''
+                        : 'none';
             });
         });
     });
-
 </script>
+
 <?= $this->endSection() ?>

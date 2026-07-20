@@ -15,13 +15,86 @@ $routes->group('operateur', function ($routes) {
     $routes->group('prefixes', function ($routes) {
         $routes->get('/', 'GestionOperateur::showPrefixe');
         $routes->post('ajouter', 'GestionOperateur::ajouterPrefixe');
+        $routes->get('modifier/(:num)', 'GestionOperateur::showModifierPrefixe/$1');
         $routes->post('modifier', 'GestionOperateur::modifierPrefixe');
         $routes->get('desactiver/(:num)', 'GestionOperateur::desactiverPrefixe/$1');
         $routes->get('activer/(:num)', 'GestionOperateur::activerPrefixe/$1');
     });
     $routes->get('comptes', 'GestionOperateur::showFormCompte');
-    $routes->get('types-operations', 'GestionOperateur::showFormTypeOperation');
-    $routes->get('frais', 'GestionOperateur::showFormBaremeFrais');
+    $routes->group('types-operations', function ($routes) {
+        $routes->get('/', 'GestionOperateur::showTypeOperation');
+        $routes->post('ajouter', 'GestionOperateur::ajouterTypeOperation');
+        $routes->get('modifier/(:num)', 'GestionOperateur::showModifierTypeOperation/$1');
+        $routes->post('modifier', 'GestionOperateur::modifierTypeOperation');
+    });
+    $routes->group('frais', function ($routes) {
+        $routes->get('/', 'GestionOperateur::showFrais');
+        $routes->group('retrait', static function ($routes) {
+            $routes->get(
+                '/',
+                'GestionOperateur::showFraisRetrait'
+            );
+
+            $routes->post(
+                'ajouter',
+                'GestionOperateur::ajouterFraisRetrait'
+            );
+
+            $routes->post(
+                'activer/(:num)',
+                'GestionOperateur::activerFraisRetrait/$1'
+            );
+
+            $routes->post(
+                'desactiver/(:num)',
+                'GestionOperateur::desactiverFraisRetrait/$1'
+            );
+
+            $routes->post(
+                'supprimer/(:num)',
+                'GestionOperateur::supprimerFraisRetrait/$1'
+            );
+        });
+        $routes->group('transfert', static function ($routes) {
+
+            $routes->get(
+                '/',
+                'GestionOperateur::showFraisTransfert'
+            );
+
+            $routes->post(
+                'ajouter',
+                'GestionOperateur::ajouterFraisTransfert'
+            );
+
+            $routes->get(
+                'modifier/(:num)',
+                'GestionOperateur::modifierFraisTransfert/$1'
+            );
+
+            $routes->post(
+                'update',
+                'GestionOperateur::updateFraisTransfert'
+            );
+
+            $routes->post(
+                'activer/(:num)',
+                'GestionOperateur::activerFraisTransfert/$1'
+            );
+
+            $routes->post(
+                'desactiver/(:num)',
+                'GestionOperateur::desactiverFraisTransfert/$1'
+            );
+
+            $routes->post(
+                'supprimer/(:num)',
+                'GestionOperateur::supprimerFraisTransfert/$1'
+            );
+
+        });
+        
+    });
     $routes->get('operations', 'GestionOperateur::showHistorique');
 });
 
