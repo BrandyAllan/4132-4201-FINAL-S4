@@ -33,7 +33,7 @@
                 <li class="nav-item"><a class="nav-link" href="#fonctionnement">Comment ça marche ?</a></li>
             </ul>
 
-            <a href="<?= site_url('connexion') ?>" class="btn btn-light rounded-pill px-4 fw-semibold">
+            <a href="<?= site_url('connexion/client') ?>" class="btn btn-light rounded-pill px-4 fw-semibold">
                 <i class="bi bi-person-circle me-2"></i>Mon compte
             </a>
 
@@ -338,7 +338,7 @@
                     <p>Connectez-vous simplement avec votre numéro de téléphone.</p>
                 </div>
 
-                <a href="<?= site_url('connexion') ?>" class="btn btn-light btn-lg rounded-pill px-4 fw-bold">
+                <a href="<?= site_url('connexion/client') ?>" class="btn btn-light btn-lg rounded-pill px-4 fw-bold">
                     Accéder à mon compte
                     <i class="bi bi-arrow-right ms-2"></i>
                 </a>

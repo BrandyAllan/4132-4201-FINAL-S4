@@ -8,3 +8,4 @@ use App\Controllers\GestionOperateur;
 $routes->get('/', 'Home::index');
 
 $routes->get('connexion/admin', 'GestionOperateur::showFormLogin');
+$routes->get('connexion/client', 'LoginClient::showLogin');
