@@ -4,6 +4,8 @@ namespace App\Controllers;
 
 use App\Models\ClientModel;
 use App\Models\PrefixeModel;
+use App\Models\MouvementCompteModel;
+use App\Models\BaremeFraisModel;
 use App\Controllers\BaseController;
 
 class GestionClient extends BaseController
@@ -45,7 +47,20 @@ class GestionClient extends BaseController
             return redirect()->to('connexion/client');
         }
 
-        return view('client/retrait');
+        $telephone = session()->get('telephone');
+        $clientModel = new ClientModel();
+        $baremeModel = new BaremeFraisModel();
+
+        $compte = $clientModel->where('telephone', $telephone)->first();
+        
+        if (!$compte) {
+            return redirect()->to('connexion/client')->with('error', 'Compte introuvable.');
+        }
+
+        $liste_bareme = $baremeModel->findAll();
+
+        return view('client/retrait', ['solde' => $compte['solde'], 'bareme' => json_encode($liste_bareme)
+        ]);
     }
 
     public function showTransfert()
@@ -58,13 +73,27 @@ class GestionClient extends BaseController
     }
 
 
-    public function showhistorique()
+    public function showHistorique()
     {
-        if (!session()->has('telephone')) {
+        $session = session();
+        if (!$session->has('est_connecte')) {
             return redirect()->to('connexion/client');
         }
 
+        $clientId = $session->get('client_id');
+        $mouvementModel = new MouvementCompteModel(); 
+        
+        $historique = $mouvementModel->select('mouvements_comptes.*, types_operations.code as type_operation')
+                            ->join('operations', 'operations.id = mouvements_comptes.operation_id')
+                            ->join('types_operations', 'types_operations.id = operations.type_operation_id')
+                            ->where('mouvements_comptes.compte_id', $clientId)
+                            ->orderBy('mouvements_comptes.date_mouvement', 'DESC')
+                            ->findAll();
 
+        return view('client/historique', [
+            'historique' => $historique,
+            'telephone'  => $session->get('telephone')
+        ]);
     }
 
 
@@ -76,7 +105,7 @@ class GestionClient extends BaseController
         return "{$codeTypeOperation}-{$date}-{$random}";
     }
     
-    private function insertOperation($db, int $typeOpId, string $ref, ?int $sourceId, ?int $destId, float $montant, string $motif): int
+    private function insertOperation($db, int $typeOpId, string $ref, ?int $sourceId, ?int $destId, float $montant, string $motif, ?int $frais): int
     {
         $db->table('operations')->insert([
             'reference'             => $ref,
@@ -84,7 +113,7 @@ class GestionClient extends BaseController
             'compte_source_id'      => $sourceId,      // Peut être null (Dépôt)
             'compte_destination_id' => $destId,        // Peut être null (Retrait)
             'montant'               => $montant,
-            'frais'                 => 0,
+            'frais'                 => $frais,
             'montant_total'         => $montant,
             'statut'                => 'VALIDEE',
             'motif'                 => $motif,
@@ -136,11 +165,11 @@ class GestionClient extends BaseController
             return redirect()->back()->with('error', 'Erreur de configuration ou compte inactif.');
         }
 
-        $soldeAvant = (float) $compte->solde;
+        $soldeAvant = (float) $compte->solde;   
         $soldeApres = $soldeAvant + $montant;
         $reference  = $this->genererReference($typeOp->code);
 
-        $operationId = $this->insertOperation($db, $typeOp->id, $reference, null, $compte->id, $montant, 'Dépôt en espèces');
+        $operationId = $this->insertOperation($db, $typeOp->id, $reference, null, $compte->id, $montant, 'Dépôt en espèces', 0);
         $this->insertMouvement($db, $operationId, $compte->id, 'CREDIT', $soldeAvant, $soldeApres, $montant, 'Crédit suite à dépôt de fonds');
         $db->table('comptes')->where('id', $compte->id)->update([
             'solde'             => $soldeApres,
@@ -169,9 +198,12 @@ class GestionClient extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
+        $db = \Config\Database::connect();
+
         $telephone = session()->get('telephone');
         $montant = (float) $this->request->getPost('montant');
-        $db = \Config\Database::connect();
+        $frais = $this->calculFrais($db,$montant);
+        $montant = $montant + $frais;
         
         // ----------------------------------------------------------------
         $db->transStart();
@@ -193,7 +225,7 @@ class GestionClient extends BaseController
         $soldeApres = $soldeAvant - $montant;
         $reference  = $this->genererReference($typeOp->code);
 
-        $operationId = $this->insertOperation($db, $typeOp->id, $reference, $compte->id, null, $montant, 'Retrait en espèces');
+        $operationId = $this->insertOperation($db, $typeOp->id, $reference, $compte->id, null, $montant, 'Retrait en espèces', $frais);
         $this->insertMouvement($db, $operationId, $compte->id, 'DEBIT', $soldeAvant, $soldeApres, $montant, 'Débit suite à retrait de fonds');
         $db->table('comptes')->where('id', $compte->id)->update([
             'solde'             => $soldeApres,
@@ -207,8 +239,21 @@ class GestionClient extends BaseController
             return redirect()->back()->with('error', 'Le retrait a échoué suite à un problème technique.');
         }
 
-        return redirect()->to('client/dashboard')->with('success', 'Retrait de ' . number_format($montant, 2, ',', ' ') . ' Ar effectué avec succès (Réf: ' . $reference . ').');
+        return redirect()->to('client/dashboard')->with('success', 'Retrait de ' . number_format($montant, 2, ',', ' ') . ' Ar effectué avec succès (Réf: ' . $reference . ').' . 'Frais: '. number_format($frais, 2, ',', ' ') . ' Ar');
     }
+
+
+    private function calculFrais($db, float $montant): float
+    {
+        $bareme = $db->table('baremes_frais')
+                    ->where('montant_min <=', $montant)
+                    ->where('montant_max >=', $montant)
+                    ->get()
+                    ->getRow();
+
+        return $bareme ? (float)$bareme->frais : 0.0;
+    }
+
 
     /////////////////////////////////////////////////////////////////////
     public function doTransfert()
@@ -229,6 +274,9 @@ class GestionClient extends BaseController
         $telExpediteur = session()->get('telephone');
         $telDestinataire = $this->request->getPost('destinataire');
         $montant = (float) $this->request->getPost('montant');
+
+        $frais = $this->calculFrais($db,$montant);
+        $montant = $montant + $frais;
 
         if ($telExpediteur === $telDestinataire) {
             return redirect()->back()->withInput()->with('error', 'Vous ne pouvez pas transférer de l\'argent à votre propre numéro.');
@@ -270,11 +318,11 @@ class GestionClient extends BaseController
             
             $reference = $this->genererReference($typeOp->code);
 
-            $operationId = $this->enregistrerOperation($db, $typeOp->id, $reference, $compteExp->id, $compteDest->id, $montant, 'Transfert de compte à compte');
+            $operationId = $this->insertOperation($db, $typeOp->id, $reference, $compteExp->id, $compteDest->id, $montant, 'Transfert de compte à compte');
 
-            $this->enregistrerMouvement($db, $operationId, $compteExp->id, 'DEBIT', $soldeAvantExp, $soldeApresExp, $montant, "Transfert envoyé au {$telDestinataire}");
+            $this->insertMouvement($db, $operationId, $compteExp->id, 'DEBIT', $soldeAvantExp, $soldeApresExp, $montant, "Transfert envoyé au {$telDestinataire}");
             
-            $this->enregistrerMouvement($db, $operationId, $compteDest->id, 'CREDIT', $soldeAvantDest, $soldeApresDest, $montant, "Transfert reçu du {$telExpediteur}");
+            $this->insertMouvement($db, $operationId, $compteDest->id, 'CREDIT', $soldeAvantDest, $soldeApresDest, $montant, "Transfert reçu du {$telExpediteur}");
 
             $db->table('comptes')->where('id', $compteExp->id)->update([
                 'solde'             => $soldeApresExp,
@@ -299,4 +347,6 @@ class GestionClient extends BaseController
 
         return redirect()->to('client/dashboard')->with('success', 'Transfert de ' . number_format($montant, 2, ',', ' ') . ' Ar envoyé avec succès à ' . $telDestinataire . ' (Réf: ' . $reference . ').');
     }
+
+
 }
