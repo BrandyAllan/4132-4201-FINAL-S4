@@ -1,0 +1,4 @@
+/writable/debugbar/*
+/writable/logs/*
+/writable/session/*
+/writable/mobilemoney.db
