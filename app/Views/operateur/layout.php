@@ -105,14 +105,6 @@
                 <span>Comptes clients</span>
             </a>
 
-            <a
-                href="<?= site_url('operateur/operations') ?>"
-                class="menu-link <?= uri_string() === 'operateur/operations' ? 'active' : '' ?>"
-            >
-                <i class="bi bi-clock-history"></i>
-                <span>Historique</span>
-            </a>
-
         </nav>
 
         <div class="sidebar-footer">

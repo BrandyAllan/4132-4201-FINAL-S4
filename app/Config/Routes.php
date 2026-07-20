@@ -20,7 +20,6 @@ $routes->group('operateur', function ($routes) {
         $routes->get('desactiver/(:num)', 'GestionOperateur::desactiverPrefixe/$1');
         $routes->get('activer/(:num)', 'GestionOperateur::activerPrefixe/$1');
     });
-    $routes->get('comptes', 'GestionOperateur::showFormCompte');
     $routes->group('types-operations', function ($routes) {
         $routes->get('/', 'GestionOperateur::showTypeOperation');
         $routes->post('ajouter', 'GestionOperateur::ajouterTypeOperation');
@@ -95,7 +94,8 @@ $routes->group('operateur', function ($routes) {
         });
         
     });
-    $routes->get('operations', 'GestionOperateur::showHistorique');
+    $routes->get('comptes', 'GestionOperateur::situationCompte');
+    $routes->get('comptes', 'GestionOperateur::situationCompte', ['filter' => 'auth']);
 });
 
 $routes->get('connexion/client', 'LoginClient::showLogin');

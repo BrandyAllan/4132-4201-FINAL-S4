@@ -130,6 +130,43 @@
 
                 </div>
 
+                <div class="col-lg-4">
+
+                    <label for="operateur_id" class="form-label fw-semibold">
+                        Opérateur
+                    </label>
+
+                    <select
+                        class="form-select"
+                        id="operateur_id"
+                        name="operateur_id"
+                        required
+                    >
+                        <option value="">
+                            Sélectionner un opérateur
+                        </option>
+
+                        <?php foreach ($operateurs as $operateur): ?>
+                            <option
+                                value="<?= esc($operateur['id']) ?>"
+                                <?= (string) old('operateur_id')
+                                    === (string) $operateur['id']
+                                        ? 'selected'
+                                        : '' ?>
+                            >
+                                <?= esc($operateur['nom']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <?php if (session('errors.operateur_id')): ?>
+                        <small class="text-danger">
+                            <?= esc(session('errors.operateur_id')) ?>
+                        </small>
+                    <?php endif; ?>
+
+                </div>
+
             </div>
 
             <div class="d-flex justify-content-end mt-4">
