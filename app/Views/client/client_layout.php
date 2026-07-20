@@ -11,6 +11,7 @@
     <link href="<?= base_url('assets/css/login.css') ?>" rel="stylesheet">
     <link href="<?= base_url('assets/css/dashboard.css') ?>" rel="stylesheet">
 </head>
+
 <body class="d-flex flex-column min-vh-100">
 
     <!-- Barre de Navigation MadaCash -->
