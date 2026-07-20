@@ -1,0 +1,72 @@
+- 4132 
+1- Authetification : 
+    ++ Model : ClientModel :
+    
+    ++ Controller (Login) :
+        ☐ showLogin :
+            - redirect => page login.php
+
+        ☐ doLogin :
+            - prends le numéro inséré
+            - validation du numéro
+            - verification existence num 
+                | si oui => redirect vers dashboard.php
+                | si non => insertion dans table + solde = 0 + statut = actif
+                
+            - redirect => /client/dashboard.php
+
+    ++ View (login.php) :
+        ☐ input : numéro de téléphone
+        ☐ btn soumission
+        ☐ affichage erreurs
+
+    ++ CSS : 
+        ☐ style formulaire
+        ☐ style bouton
+        ☐ style erreurs
+    
+2- Dashboard :
+    ++ Controller (Login) :
+        ☐ showDashboard :
+            - verification session
+                | si non => redirect vers login.php
+                | si oui => affichage dashboard.php
+
+    ++ View (dashboard.php) :
+        ☐ affichage numéro de téléphone
+        ☐ btn déconnexion
+        ☐ affichage liste des actions (retrait, dépôt, transfert, historique)
+
+
+3- Soldes : 
+    ++ Controller (GestionClient) :
+        ☐ showSolde :
+            - verification session
+                | si non => redirect vers login.php
+                | si oui => affichage solde.php
+
+    ++ View (solde.php) :
+        ☐ affichage solde actuel
+
+4- Depot :
+    ++ Controller (GestionClient) :
+        ☐ showDepot :
+            - verification  session
+                | si non => redirect vers login.php
+                | si oui => affichage depot.php
+
+        ☐ 
+        ☐ doDepot :
+            - verification session
+                | si non => redirect vers login.php
+                | si oui => 
+                    - validation du montant
+                    - verification existence num 
+                        | si oui => ajout montant au solde + historique depot
+                        | si non => redirect vers login.php
+
+    ++ View (depot.php) :
+        ☐ input : montant à déposer
+        ☐ btn soumission
+        ☐ affichage erreurs
+

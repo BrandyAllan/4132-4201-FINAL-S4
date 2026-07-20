@@ -136,7 +136,7 @@ class GestionClient extends BaseController
             return redirect()->back()->with('error', 'Erreur de configuration ou compte inactif.');
         }
 
-        $soldeAvant = (float) $compte->solde;
+        $soldeAvant = (float) $compte->solde;   
         $soldeApres = $soldeAvant + $montant;
         $reference  = $this->genererReference($typeOp->code);
 
