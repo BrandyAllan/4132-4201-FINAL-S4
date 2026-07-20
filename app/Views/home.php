@@ -37,7 +37,7 @@
                 <i class="bi bi-person-circle me-2"></i>Mon compte
             </a>
 
-            <a href="<?= site_url('admin') ?>" class="btn btn-outline-light rounded-pill px-4 fw-semibold ms-2">
+            <a href="<?= site_url('connexion/admin') ?>" class="btn btn-outline-light rounded-pill px-4 fw-semibold ms-2">
                 <i class="bi bi-lock-fill"></i>
             </a>
         </div>
