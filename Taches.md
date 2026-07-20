@@ -8,13 +8,8 @@
 * **UI/UX Client :** Design et intégration des vues clients avec Bootstrap
 
 
-++ Authetification : 
-    __ models
-    __ controller
-    __ view
-    __ css
 
-## 4208 -- Côté Opérateur
+## 4201 -- Côté Opérateur
 * **Base de données :** Conception de la structure globale du fichier `base.sql` et insertion du jeu de données initial (barèmes de test)
 * **Gestion des configurations :** Création de l'interface d'administration pour la configuration des préfixes valides (033, 037, etc.)
 * **Gestion des frais :** Développement du module de modification dynamique des barèmes de frais par tranche de montant
