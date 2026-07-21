@@ -82,7 +82,6 @@ class GestionClient extends BaseController
         $liste_bareme = $baremeModel->findAll();
 
         $prefixeModel = new PrefixeModel();
-        // Récupérer les préfixes de votre opérateur (ex: ceux dont l'operateur_id correspond au vôtre)
         $prefixesValides = $prefixeModel->findAll(); 
 
         return view('client/transfert', [

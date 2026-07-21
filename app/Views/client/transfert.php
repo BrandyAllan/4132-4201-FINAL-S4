@@ -12,7 +12,6 @@
             <p class="text-secondary mt-2 mb-0">Transférez instantanément des fonds vers un autre compte.</p>
         </div>
 
-        <!-- Affichage du solde disponible -->
         <div class="alert alert-light border text-center mb-4 p-3">
             <span class="text-muted d-block small">Solde disponible :</span>
             <span class="fs-4 fw-bold text-primary"><?= number_format($solde, 2, ',', ' ') ?> Ar</span>
@@ -28,12 +27,6 @@
             </div>
         <?php endif; ?>
 
-        <?php if (session()->getFlashdata('error')): ?>
-            <div class="alert alert-danger rounded-4 border-0 p-3 mb-4">
-                <span><?= session()->getFlashdata('error') ?></span>
-            </div>
-        <?php endif; ?>
-
         <form action="<?= base_url('client/transfert') ?>" method="POST">
             <?= csrf_field() ?>
 
@@ -41,7 +34,7 @@
                 <label for="destinataire" class="form-label-custom">NUMÉRO DU DESTINATAIRE</label>
                 <div class="input-group-custom">
                     <span class="input-icon"><i class="bi bi-telephone"></i></span>
-                    <input type="text" name="destinataire" id="destinataire" class="form-control-custom" placeholder="Ex: 034XXXXXXX" value="<?= old('destinataire') ?>" required autofocus>
+                    <input type="text" name="destinataire" id="destinataire" class="form-control-custom" placeholder="Ex: 034XXXXXXX" value="<?= old('destinataire') ?>" required>
                 </div>
             </div>
 
@@ -58,7 +51,6 @@
                 <span id="montant-frais" class="fw-bold text-danger">0 Ar</span>
             </div>
 
-            <!-- Option inclure frais de retrait (Conteneur masqué par défaut) -->
             <div id="option-frais-container" class="mb-4 form-check" style="display: none;">
                 <input type="checkbox" class="form-check-input" id="inclureFraisRetrait" name="inclureFraisRetrait">
                 <label class="form-check-label" for="inclureFraisRetrait">Inclure les frais de retrait lors de l'envoi</label>
@@ -94,9 +86,16 @@
     function calculerEtAfficher() {
         const montant = parseFloat(inputMontant.value);
         const tel = inputDest.value;
-        const prefixe = tel.substring(0, 3);
         
-        // Vérification opérateur interne
+        // Sécurité : si pas de montant valide, on masque tout
+        if (isNaN(montant) || montant <= 0) {
+            containerFrais.style.display = 'none';
+            containerOptionFrais.style.display = 'none';
+            containerFraisRetrait.style.display = 'none';
+            return;
+        }
+
+        const prefixe = tel.substring(0, 3);
         const estInterne = prefixesValides.some(p => p.prefixe === prefixe);
         
         if (estInterne && tel.length >= 3) {
@@ -106,9 +105,10 @@
             checkboxFrais.checked = false;
         }
 
+        // Utilisation des noms de colonnes exacts vus dans votre console
         const item = baremes.find(b => montant >= Number(b.montant_min) && montant <= Number(b.montant_max));
         
-        if (item && montant > 0) {
+        if (item) {
             spanFrais.textContent = Number(item.frais).toLocaleString('fr-FR') + ' Ar';
             containerFrais.style.display = 'block';
 
