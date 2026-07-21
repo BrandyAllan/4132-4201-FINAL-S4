@@ -61,6 +61,15 @@ CREATE TABLE `prefixes_operateur` (
         CONSTRAINT `prefixes_operateur_operateur_id_foreign` FOREIGN KEY (`operateur_id`) REFERENCES `operateurs`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
+CREATE TABLE remise (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pourcentage NUMERIC NOT NULL,
+    date_creation DATETIME NOT NULL DEFAULT 'CURRENT_TIMESTAMP',
+    actif INTEGER NOT NULL DEFAULT 1
+);
+
+INSERT INTO remise (pourcentage) values (5);
+
 CREATE TABLE operations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 

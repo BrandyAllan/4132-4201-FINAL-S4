@@ -6,6 +6,7 @@ use App\Models\ClientModel;
 use App\Models\PrefixeModel;
 use App\Models\MouvementCompteModel;
 use App\Models\BaremeFraisModel;
+use App\Models\RemiseModel;
 use App\Controllers\BaseController;
 
 class GestionClient extends BaseController
@@ -336,6 +337,35 @@ class GestionClient extends BaseController
     }
 
     /////////////////////////////////////////////////////////////////////
+        private function calculFraisOperateur($db, float $montant, string $telephone): float
+    {
+        $bareme = $db->table('baremes_frais')
+                    ->where('montant_min <=', $montant)
+                    ->where('montant_max >=', $montant)
+                    ->get()
+                    ->getRow();
+        
+        $bareme ? (float)$bareme->frais : 0.0;
+
+
+        if($this->ValiderTelephone($db, $telephone) === 1){
+            $remise = new RemiseModel();
+
+            $remise = $db->table('remise')
+                         ->where('actif',1)
+                         ->get()
+                         ->getRow();
+
+            $remise ? (float)$remise->pourcentage : 0.0;
+
+            $frais = ( $bareme * $remise )/ 100;
+            return $frais;
+        }
+
+        return $bareme;
+    }
+
+    /////////////////////////////////////////////////////////////////////
     public function doTransfert()
     {
         if (!session()->has('telephone')) {
@@ -375,7 +405,7 @@ class GestionClient extends BaseController
         $estMemeOperateur = ($validationOp === 1);
         
         //////////////////////////////
-        $fraisTransfert = $this->calculFrais($db, $montantInitial);
+        $fraisTransfert = $this->calculFraisOperateur($db, $montantInitial, $telDestinataire);
         
         $fraisRetrait = 0.0;
         if ($inclureFraisRetrait && $estMemeOperateur) {
@@ -430,5 +460,110 @@ class GestionClient extends BaseController
         return redirect()->to('client/dashboard')->with('success', 'Transfert réussi (Réf: ' . $reference . ').');
     }
 
+    /////////////////////////////////////////////////////////////////////
+    public function doTransfertMultiple()
+    {
+        if (!session()->has('telephone')) {
+            return redirect()->to('connexion/client');
+        }
 
+        // Récupération des données du formulaire
+        $montantGlobal = (float) $this->request->getPost('montant_global');
+        $destinataires = $this->request->getPost('destinataires'); // C'est un tableau de numéros
+
+        if ($montantGlobal <= 0 || empty($destinataires) || !is_array($destinataires)) {
+            return redirect()->back()->withInput()->with('error', 'Données invalides pour le transfert multiple.');
+        }
+
+        $db = \Config\Database::connect();
+        $telExpediteur = session()->get('telephone');
+
+        // 1. Filtrer les doublons ou le propre numéro de l'expéditeur si besoin
+        $destinataires = array_unique(array_filter($destinataires));
+        $nombreDestinataires = count($destinataires);
+
+        if ($nombreDestinataires === 0) {
+            return redirect()->back()->withInput()->with('error', 'Veuillez renseigner au moins un destinataire valide.');
+        }
+
+        // 2. Calcul du montant par destinataire (division du montant global)
+        $montantParPersonne = $montantGlobal / $nombreDestinataires;
+
+        // Récupération du compte expéditeur
+        $compteExp = $db->table('comptes')->where('telephone', $telExpediteur)->get()->getRow();
+        $typeOp    = $db->table('types_operations')->where('code', 'TRA')->get()->getRow();
+
+        if (!$compteExp || $compteExp->statut !== 'ACTIF' || !$typeOp) {
+            return redirect()->back()->withInput()->with('error', 'Compte expéditeur inactif ou configuration manquante.');
+        }
+
+        // Calcul des frais globaux (par exemple, basés sur le montant global ou sur chaque part)
+        // Ici, on calcule les frais sur le montant global du transfert
+        $fraisTransfertGlobal = $this->calculFrais($db, $montantGlobal);
+        $totalADebiter = $montantGlobal + $fraisTransfertGlobal;
+
+        if ((float)$compteExp->solde < $totalADebiter) {
+            return redirect()->back()->withInput()->with('error', 'Solde insuffisant pour couvrir le montant global et les frais.');
+        }
+
+        $db->transStart();
+
+        $reference = $this->genererReference($typeOp->code);
+
+        // Enregistrement d'une opération globale ou par destinataire selon votre logique
+        // Ici on enregistre l'opération globale avec le montant total
+        $operationId = $this->insertOperation(
+            $db, 
+            $typeOp->id, 
+            $reference, 
+            $compteExp->id, 
+            null, // ou un libellé groupé
+            $montantGlobal, 
+            $fraisTransfertGlobal,
+            "Transfert multiple vers {$nombreDestinataires} numéros"
+        );
+
+        // Débit unique de l'expéditeur pour le total (montant global + frais globaux)
+        $soldeAvantExp = (float)$compteExp->solde;
+        $soldeApresExp = $soldeAvantExp - $totalADebiter;
+        
+        $this->insertMouvement(
+            $db, $operationId, $compteExp->id, 'DEBIT', 
+            $soldeAvantExp, $soldeApresExp, $totalADebiter, 
+            "Envoi multiple de {$montantGlobal} Ar réparti sur {$nombreDestinataires} personnes"
+        );
+
+        $db->table('comptes')->update(['solde' => $soldeApresExp], ['id' => $compteExp->id]);
+
+        // 3. Boucle sur chaque destinataire pour créditer leur part
+        foreach ($destinataires as $telDest) {
+            if ($telDest === $telExpediteur) {
+                continue; // Optionnel : ignorer si l'expéditeur s'est mis lui-même dans la liste
+            }
+
+            $compteDest = $db->table('comptes')->where('telephone', $telDest)->get()->getRow();
+
+            // Si le destinataire possède un compte dans notre système, on le crédite de sa part
+            if ($compteDest) {
+                $soldeAvantDest = (float)$compteDest->solde;
+                $soldeApresDest = $soldeAvantDest + $montantParPersonne;
+
+                $this->insertMouvement(
+                    $db, $operationId, $compteDest->id, 'CREDIT', 
+                    $soldeAvantDest, $soldeApresDest, $montantParPersonne, 
+                    "Reçu (part de transfert multiple de {$telExpediteur})"
+                );
+
+                $db->table('comptes')->update(['solde' => $soldeApresDest], ['id' => $compteDest->id]);
+            }
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', 'Erreur lors du traitement du transfert multiple.');
+        }
+
+        return redirect()->to('client/dashboard')->with('success', 'Transfert multiple de ' . number_format($montantGlobal, 2) . ' Ar effectué avec succès (Réf: ' . $reference . ').');
+    }
 }

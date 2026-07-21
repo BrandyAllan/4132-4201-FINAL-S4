@@ -47,9 +47,10 @@
             </div>
 
             <div id="frais-container" class="mb-3 text-center p-2" style="display: none;">
-                <span class="text-secondary small">Frais de transfert : </span>
+                <span class="text-secondary small">Frais de transfert sans remise:  </span>
                 <span id="montant-frais" class="fw-bold text-danger">0 Ar</span>
             </div>
+            
 
             <div id="option-frais-container" class="mb-4 form-check" style="display: none;">
                 <input type="checkbox" class="form-check-input" id="inclureFraisRetrait" name="inclureFraisRetrait">

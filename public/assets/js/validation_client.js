@@ -18,6 +18,7 @@ const telRegex = /^(032|033|034|038|037|031)\d{7}$/;
 // 2. LOGIQUE DE VALIDATION EN TEMPS RÉEL (INPUTS)
 // =================================================================
 
+
 // --- Validation Téléphone (Login) ---
 if (telInput) {
     telInput.addEventListener('input', () => {
