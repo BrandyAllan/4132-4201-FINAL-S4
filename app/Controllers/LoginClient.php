@@ -10,8 +10,13 @@ class LoginClient extends BaseController
 {
     public function showLogin(): string 
     {
+        $session = session();
+
         $prefixeModel = new PrefixeModel();
-        $prefixesActifs = $prefixeModel->recupererPrefixesActifs();
+        $operateur_id = 2;
+        $session->set('operateur_id', $operateur_id);
+
+        $prefixesActifs = $prefixeModel->recupererPrefixesActifs($operateur_id);
 
         $data = [
             'prefixes' => $prefixesActifs
@@ -24,33 +29,32 @@ class LoginClient extends BaseController
     public function doLogin()
     {
         $session = session();
+
         $clientModel = new ClientModel();
         $prefixeModel = new PrefixeModel();
 
-        // 1. Définir les règles strictes : requis, numérique, et exactement 10 caractères
+        $operateur_id = $session->get('operateur_id');
+
+        /////////////////////////////////////////////////
         $rules = [
             'telephone' => 'required|numeric|exact_length[10]'
         ];
-
         if (!$this->validate($rules)) {
-            // Renvoie l'erreur si la longueur ou le format n'est pas bon (ex: 9 chiffres)
             $session->setFlashdata('erreur', 'Le numéro de téléphone doit contenir exactement 10 chiffres.');
             return redirect()->back()->withInput();
         }
 
+        /////////////////////////////////////////////////
         $telephone = trim($this->request->getPost('telephone') ?? '');
-
-        // 2. Vérification du préfixe opérateur (032, 033, 034, 038)
         $prefixeSaisi = substr($telephone, 0, 3);
         
-        if (!$prefixeModel->estPrefixeValide($prefixeSaisi)) {
+        if (!$prefixeModel->estPrefixeValide($prefixeSaisi,$operateur_id)) {
             $session->setFlashdata('erreur', 'Ce numéro appartient à un opérateur inactif.');
             return redirect()->back()->withInput();
         }
 
-        // 3. Récupération ou création du compte client
+        /////////////////////////////////////////////////
         $compte = $clientModel->where('telephone', $telephone)->first();
-
         if ($compte) {
             if ($compte['statut'] !== 'ACTIF') {
                 $session->setFlashdata('erreur', 'Votre compte est bloqué ou fermé.');
@@ -66,7 +70,7 @@ class LoginClient extends BaseController
             $compte = $clientModel->find($idInsere);
         }
 
-        // 4. Connexion de la session
+        /////////////////////////////////////////////////
         $session->set([
             'client_id'    => $compte['id'],
             'telephone'   => $compte['telephone'],

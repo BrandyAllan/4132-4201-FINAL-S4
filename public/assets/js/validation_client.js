@@ -12,7 +12,7 @@ const destinataireInput = document.getElementById('destinataire');
 const montantInput = document.getElementById('montant');
 
 // Règle : EXACTEMENT 10 chiffres au total avec les préfixes autorisés
-const telRegex = /^(032|033|034|038)\d{7}$/;
+const telRegex = /^(032|033|034|038|037|031)\d{7}$/;
 
 // =================================================================
 // 2. LOGIQUE DE VALIDATION EN TEMPS RÉEL (INPUTS)
