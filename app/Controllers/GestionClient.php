@@ -125,13 +125,13 @@ class GestionClient extends BaseController
         return "{$codeTypeOperation}-{$date}-{$random}";
     }
     
-    private function insertOperation($db, int $typeOpId, string $ref, ?int $sourceId, ?int $destId, float $montant, string $motif, ?int $frais): int
+    private function insertOperation($db, int $typeOpId, string $ref, ?int $sourceId, ?string $telDest, float $montant, string $motif, ?int $frais): int
     {
         $db->table('operations')->insert([
             'reference'             => $ref,
             'type_operation_id'     => $typeOpId,
             'compte_source_id'      => $sourceId,      // Peut être null (Dépôt)
-            'compte_destination_id' => $destId,        // Peut être null (Retrait)
+            'telephone_destinataire' => $telDest,        // Peut être null (Retrait)
             'montant'               => $montant,
             'frais'                 => $frais,
             'montant_total'         => $montant,
@@ -189,8 +189,28 @@ class GestionClient extends BaseController
         $soldeApres = $soldeAvant + $montant;
         $reference  = $this->genererReference($typeOp->code);
 
-        $operationId = $this->insertOperation($db, $typeOp->id, $reference, null, $compte->id, $montant, 'Dépôt en espèces', 0);
-        $this->insertMouvement($db, $operationId, $compte->id, 'CREDIT', $soldeAvant, $soldeApres, $montant, 'Crédit suite à dépôt de fonds');
+        $operationId = $this->insertOperation(
+            $db, 
+            $typeOp->id, 
+            $reference, 
+            $compte->id, 
+            null,                
+            $montant, 
+            'Dépôt en espèces',
+            0                   
+        );
+
+        $this->insertMouvement(
+            $db, 
+            $operationId, 
+            $compte->id, 
+            'CREDIT', 
+            $soldeAvant, 
+            $soldeApres, 
+            $montant, 
+            'Crédit suite à dépôt de fonds'
+        );
+
         $db->table('comptes')->where('id', $compte->id)->update([
             'solde'             => $soldeApres,
             'date_modification' => date('Y-m-d H:i:s')
@@ -205,7 +225,6 @@ class GestionClient extends BaseController
 
         return redirect()->to('client/dashboard')->with('success', 'Dépôt de ' . number_format($montant, 2, ',', ' ') . ' Ar effectué (Réf: ' . $reference . ')');
     }
-
     /////////////////////////////////////////////////////////////////////
     public function doRetrait()
     {

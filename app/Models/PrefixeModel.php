@@ -17,16 +17,19 @@ class PrefixeModel extends Model
     ];
 
 
-    public function recupererPrefixesActifs(): array
+    public function recupererPrefixesActifs($operateur_id): array
     {
-        $resultats = $this->where('actif', 1)->findAll();
+        $resultats =   $this->where('actif', 1)
+                            ->where('operateur_id', $operateur_id)
+                            ->findAll();
         return array_column($resultats, 'prefixe');
     }
 
 
-    public function estPrefixeValide(string $prefixe): bool
+    public function estPrefixeValide(string $prefixe, ?int $operateur_id): bool
     {
         $check = $this->where('prefixe', $prefixe)
+                      ->where('operateur_id', $operateur_id)
                       ->where('actif', 1)
                       ->first();
                       
