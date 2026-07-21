@@ -87,10 +87,10 @@
         </p>
 
         <a
-            href="<?= site_url('operateur/operations') ?>"
+            href="#financial-summary"
             class="btn welcome-button"
         >
-            Voir les opérations
+            Voir les situations
             <i class="bi bi-arrow-right"></i>
         </a>
 
@@ -307,94 +307,102 @@
 
 </section>
 
-<section class="financial-summary">
+<section class="row g-4" id="financial-summary">
 
-    <div class="summary-card">
+    <div class="col-md-6 col-xl-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
 
-        <span class="summary-icon">
-            <i class="bi bi-wallet2"></i>
-        </span>
+                <div class="d-flex justify-content-between align-items-top">
+                    <div>
+                        <p class="text-muted mb-2">
+                            Gains totaux
+                        </p>
 
-        <div>
-            <span>Gains totaux</span>
+                        <h3 class="fw-bold mb-0">
+                            <?= number_format($gainTotal ?? 0, 0, ',', ' ') ?> Ar
+                        </h3>
+                    </div>
 
-            <strong>
-                <?= number_format(
-                    $gainTotal ?? 0,
-                    0,
-                    ',',
-                    ' '
-                ) ?>
-                Ar
-            </strong>
+                    <span class="text-primary">
+                        <i class="bi bi-wallet2"></i>
+                    </span>
+                </div>
+
+            </div>
         </div>
-
     </div>
 
-    <div class="summary-card">
+    <div class="col-md-6 col-xl-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
 
-        <span class="summary-icon withdrawal">
-            <i class="bi bi-box-arrow-down"></i>
-        </span>
+                <div class="d-flex justify-content-between align-items-top">
+                    <div>
+                        <p class="text-muted mb-2">
+                            Gains sur retraits
+                        </p>
 
-        <div>
-            <span>Gains sur retraits</span>
+                        <h3 class="fw-bold mb-0">
+                            <?= number_format($gainRetraits ?? 0, 0, ',', ' ') ?> Ar
+                        </h3>
+                    </div>
 
-            <strong>
-                <?= number_format(
-                    $gainRetraits ?? 0,
-                    0,
-                    ',',
-                    ' '
-                ) ?>
-                Ar
-            </strong>
+                    <span class="text-success">
+                        <i class="bi bi-box-arrow-down"></i>
+                    </span>
+                </div>
+
+            </div>
         </div>
-
     </div>
 
-    <div class="summary-card">
+    <div class="col-md-6 col-xl-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
 
-        <span class="summary-icon transfer">
-            <i class="bi bi-send-fill"></i>
-        </span>
+                <div class="d-flex justify-content-between align-items-top">
+                    <div>
+                        <p class="text-muted mb-2">
+                            Gains sur transferts
+                        </p>
 
-        <div>
-            <span>Gains sur transferts</span>
+                        <h3 class="fw-bold mb-0">
+                            <?= number_format($gainTransferts ?? 0, 0, ',', ' ') ?> Ar
+                        </h3>
+                    </div>
 
-            <strong>
-                <?= number_format(
-                    $gainTransferts ?? 0,
-                    0,
-                    ',',
-                    ' '
-                ) ?>
-                Ar
-            </strong>
+                    <span class="text-info">
+                        <i class="bi bi-send-fill"></i>
+                    </span>
+                </div>
+
+            </div>
         </div>
-
     </div>
 
-    <div class="summary-card">
+    <div class="col-md-6 col-xl-3">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-body">
 
-        <span class="summary-icon transfer">
-            <i class="bi bi-send-fill"></i>
-        </span>
+                <div class="d-flex justify-content-between align-items-top">
+                    <div>
+                        <p class="text-muted mb-2">
+                            Commissions autres opérateurs
+                        </p>
 
-        <div>
-            <span>Gains sur commissions (autres opérateurs)</span>
+                        <h3 class="fw-bold mb-0">
+                            <?= number_format($gainCommissions ?? 0, 0, ',', ' ') ?> Ar
+                        </h3>
+                    </div>
 
-            <strong>
-                <?= number_format(
-                    $gainCommisions ?? 0,
-                    0,
-                    ',',
-                    ' '
-                ) ?>
-                Ar
-            </strong>
+                    <span class="text-warning">
+                        <i class="bi bi-percent"></i>
+                    </span>
+                </div>
+
+            </div>
         </div>
-
     </div>
 
 </section>
@@ -428,7 +436,7 @@
 
                     <h3 class="fw-bold mt-3 mb-2">
                         <?= number_format(
-                            $ligne['montant_envoye'],
+                            $ligne['montant_total_transfere'],
                             0,
                             ',',
                             ' '
@@ -476,7 +484,7 @@
 
     <div class="row g-4">
 
-        <div class="col-xl-6">
+        <div class="col-xl-12">
 
             <article class="chart-card">
 
@@ -532,7 +540,7 @@
 
         </div>
 
-        <div class="col-xl-6">
+        <div class="col-xl-12">
 
             <article class="chart-card">
 
@@ -588,7 +596,7 @@
 
         </div>
 
-        <div class="col-xl-4">
+        <div class="col-xl-12">
 
             <article class="chart-card">
 
@@ -663,20 +671,13 @@
 
 <script>
     window.dashboardData = {
-        labels: <?= json_encode(
-            $labelsGraphique
-            ?? ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-        ) ?>,
+        labels: <?= json_encode($labelsGraphique ?? []) ?>,
 
-        retraits: <?= json_encode(
-            $gainsRetraitsGraphique
-            ?? [12000, 18500, 14000, 23000, 19500, 27000, 24500]
-        ) ?>,
+        retraits: <?= json_encode($gainsRetraitsGraphique ?? []) ?>,
 
-        transferts: <?= json_encode(
-            $gainsTransfertsGraphique
-            ?? [8000, 12500, 10500, 16000, 14500, 21000, 18500]
-        ) ?>
+        transferts: <?= json_encode($gainsTransfertsGraphique ?? []) ?>,
+
+        commissions: <?= json_encode($gainsCommissionsGraphique ?? []) ?>
     };
 </script>
 

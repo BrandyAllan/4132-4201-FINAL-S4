@@ -38,16 +38,13 @@ document.addEventListener('DOMContentLoaded', function () {
         ) + ' Ar';
     };
 
-    /*
-     * Graphique des retraits
-     */
     const withdrawalCanvas = document.getElementById(
         'withdrawalChart'
     );
 
     if (withdrawalCanvas) {
         new Chart(withdrawalCanvas, {
-            type: 'line',
+            type: 'bar',
 
             data: {
                 labels: labels,
@@ -116,9 +113,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    /*
-     * Graphique des transferts
-     */
     const transferCanvas = document.getElementById(
         'transferChart'
     );
@@ -194,54 +188,86 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const commissionCtx =
-        document.getElementById('commissionChart');
+    const commissions = Array.isArray(
+        window.dashboardData.commissions
+    )
+        ? window.dashboardData.commissions.map(Number)
+        : [];
 
-    new Chart(commissionCtx, {
+    const commissionCanvas = document.getElementById(
+        'commissionChart'
+    );
 
-        type: 'line',
+    if (commissionCanvas) {
+        new Chart(commissionCanvas, {
+            type: 'line',
 
-        data: {
+            data: {
+                labels: labels,
 
-            labels: commissionLabels,
+                datasets: [
+                    {
+                        label: 'Commissions',
+                        data: commissions,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245,158,11,.15)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }
+                ]
+            },
 
-            datasets: [{
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
 
-                label: 'Commissions',
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
 
-                data: commissionData,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
 
-                borderColor: '#f59e0b',
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return formatMontant(
+                                    context.raw
+                                );
+                            }
+                        }
+                    }
+                },
 
-                backgroundColor: 'rgba(245,158,11,.15)',
+                scales: {
+                    y: {
+                        beginAtZero: true,
 
-                fill: true,
+                        ticks: {
+                            callback: function (value) {
+                                return new Intl.NumberFormat(
+                                    'fr-FR',
+                                    {
+                                        notation: 'compact'
+                                    }
+                                ).format(value) + ' Ar';
+                            }
+                        }
+                    },
 
-                tension: .35,
-
-                pointRadius: 4
-
-            }]
-
-        },
-
-        options: {
-
-            responsive: true,
-
-            maintainAspectRatio: false,
-
-            plugins: {
-
-                legend: {
-
-                    display: false
-
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
                 }
-
             }
-
-        }
-
-    });
+        });
+    }
 });

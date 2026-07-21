@@ -13,117 +13,250 @@ class GestionOperateur extends BaseController
     public function index(): string
     {
         $db = db_connect();
+        $dateDebut = date('Y-m-d 00:00:00', strtotime('-29 days'));
 
-        $totalOperations = $db
-            ->table('operations')
-            ->countAllResults();
+        $stats = $this->getStatistiques($db);
+        $gains = $this->getGains($db);
 
-        $montantTotalResult = $db
-            ->table('operations')
-            ->selectSum('montant', 'montant_total')
-            ->get()
-            ->getRowArray();
-
-        $montantTotal = (float) (
-            $montantTotalResult['montant_total'] ?? 0
+        $retraits = $this->getFraisParJour(
+            $db,
+            1,
+            $dateDebut
         );
 
-        $totalFraisResult = $db
-            ->table('operations')
-            ->selectSum('frais', 'total_frais')
-            ->get()
-            ->getRowArray();
-
-        $totalFrais = (float) (
-            $totalFraisResult['total_frais'] ?? 0
+        $transferts = $this->getFraisParJour(
+            $db,
+            2,
+            $dateDebut
         );
 
-        $comptesActifs = $db
-            ->table('comptes')
-            ->where('statut', 'ACTIF')
-            ->countAllResults();
-
-        $gainTotal = $totalFrais;
-
-        $resultatGainRetraits = $db
-            ->table('operations')
-            ->selectSum('frais', 'gain_retraits')
-            ->where('type_operation_id', 1)
-            ->get()
-            ->getRowArray();
-
-        $gainRetraits = (float) (
-            $resultatGainRetraits['gain_retraits'] ?? 0
+        $commissions = $this->getCommissionsParJour(
+            $db,
+            $dateDebut
         );
 
-        $resultatGainTransferts = $db
-            ->table('operations')
-            ->selectSum('frais', 'gain_transferts')
-            ->where('type_operation_id', 3)
-            ->get()
-            ->getRowArray();
-
-        $gainTransferts = (float) (
-            $resultatGainTransferts['gain_transferts'] ?? 0
+        $graphiques = $this->preparerGraphiques(
+            $retraits,
+            $transferts,
+            $commissions
         );
 
-        $retraitsParJour = $db
-            ->table('operations')
+        return view('operateur/gestion', array_merge(
+            $stats,
+            $gains,
+            $graphiques,
+            [
+                'montantsParOperateur' =>
+                    $this->getMontantsParOperateur($db)
+            ]
+        ));
+    }
+
+    private function getStatistiques($db): array
+    {
+        return [
+            'totalOperations' => $db
+                ->table('operations')
+                ->countAllResults(),
+
+            'montantTotal' => $this->getSomme(
+                $db,
+                'operations',
+                'montant'
+            ),
+
+            'totalFrais' => $this->getSomme(
+                $db,
+                'operations',
+                'frais'
+            ),
+
+            'comptesActifs' => $db
+                ->table('comptes')
+                ->where('statut', 'ACTIF')
+                ->countAllResults()
+        ];
+    }
+
+    private function getSomme($db, string $table, string $colonne): float 
+    {
+        $resultat = $db
+            ->table($table)
             ->select(
-                'DATE(date_operation) AS jour, '
-                . 'SUM(frais) AS total',
+                "COALESCE(SUM($colonne), 0) AS total",
                 false
             )
-            ->where('type_operation_id', 1)
-            ->where(
-                'date_operation >=',
-                date(
-                    'Y-m-d 00:00:00',
-                    strtotime('-29 days')
-                )
+            ->get()
+            ->getRowArray();
+
+        return (float) ($resultat['total'] ?? 0);
+    }
+
+    private function getGains($db): array
+    {
+        $gainRetraits = $this->getFraisParType($db, 1);
+        $gainTransferts = $this->getFraisParType($db, 2);
+        $gainCommissions = $this->getTotalCommissions($db);
+
+        return [
+            'gainRetraits' => $gainRetraits,
+            'gainTransferts' => $gainTransferts,
+            'gainCommissions' => $gainCommissions,
+
+            'gainTotal' =>
+                $gainRetraits
+                + $gainTransferts
+                + $gainCommissions
+        ];
+    }
+
+    private function getFraisParType(
+        $db,
+        int $typeOperation
+    ): float {
+        $resultat = $db
+            ->table('operations')
+            ->select(
+                'COALESCE(SUM(frais), 0) AS total',
+                false
             )
+            ->where('type_operation_id', $typeOperation)
+            ->where('statut', 'VALIDEE')
+            ->get()
+            ->getRowArray();
+
+        return (float) ($resultat['total'] ?? 0);
+    }
+
+    private function getTotalCommissions($db): float
+    {
+        $resultat = $db
+            ->table('operations o')
+            ->select(
+                '
+                COALESCE(
+                    SUM(
+                        o.montant
+                        * COALESCE(b.commission, 0)
+                        / 100.0
+                    ),
+                    0
+                ) AS total
+                ',
+                false
+            )
+            ->join(
+                'baremes_frais b',
+                '
+                b.type_operation_id = o.type_operation_id
+                AND o.montant >= b.montant_min
+                AND (
+                    b.montant_max IS NULL
+                    OR o.montant <= b.montant_max
+                )
+                AND b.actif = 1
+                ',
+                'inner'
+            )
+            ->where('o.type_operation_id', 2)
+            ->where('o.statut', 'VALIDEE')
+            ->get()
+            ->getRowArray();
+
+        return (float) ($resultat['total'] ?? 0);
+    }
+
+    private function getFraisParJour(
+        $db,
+        int $typeOperation,
+        string $dateDebut
+    ): array {
+        $resultats = $db
+            ->table('operations')
+            ->select(
+                '
+                DATE(date_operation) AS jour,
+                COALESCE(SUM(frais), 0) AS total
+                ',
+                false
+            )
+            ->where('type_operation_id', $typeOperation)
+            ->where('statut', 'VALIDEE')
+            ->where('date_operation >=', $dateDebut)
             ->groupBy('DATE(date_operation)')
             ->orderBy('jour', 'ASC')
             ->get()
             ->getResultArray();
 
-        $transfertsParJour = $db
-            ->table('operations')
+        return $this->indexerParDate($resultats);
+    }
+
+    private function getCommissionsParJour(
+        $db,
+        string $dateDebut
+    ): array {
+        $resultats = $db
+            ->table('operations o')
             ->select(
-                'DATE(date_operation) AS jour, '
-                . 'SUM(frais) AS total',
+                '
+                DATE(o.date_operation) AS jour,
+
+                COALESCE(
+                    SUM(
+                        o.montant
+                        * COALESCE(b.commission, 0)
+                        / 100.0
+                    ),
+                    0
+                ) AS total
+                ',
                 false
             )
-            ->where('type_operation_id', 3)
-            ->where(
-                'date_operation >=',
-                date(
-                    'Y-m-d 00:00:00',
-                    strtotime('-29 days')
+            ->join(
+                'baremes_frais b',
+                '
+                b.type_operation_id = o.type_operation_id
+                AND o.montant >= b.montant_min
+                AND (
+                    b.montant_max IS NULL
+                    OR o.montant <= b.montant_max
                 )
+                AND b.actif = 1
+                ',
+                'inner'
             )
-            ->groupBy('DATE(date_operation)')
+            ->where('o.type_operation_id', 2)
+            ->where('o.statut', 'VALIDEE')
+            ->where('o.date_operation >=', $dateDebut)
+            ->groupBy('DATE(o.date_operation)')
             ->orderBy('jour', 'ASC')
             ->get()
             ->getResultArray();
 
-        $retraitsParDate = [];
+        return $this->indexerParDate($resultats);
+    }
 
-        foreach ($retraitsParJour as $ligne) {
-            $retraitsParDate[$ligne['jour']] =
-                (float) $ligne['total'];
+    private function indexerParDate(array $resultats): array
+    {
+        $donnees = [];
+
+        foreach ($resultats as $ligne) {
+            $donnees[$ligne['jour']] =
+                (float) ($ligne['total'] ?? 0);
         }
 
-        $transfertsParDate = [];
+        return $donnees;
+    }
 
-        foreach ($transfertsParJour as $ligne) {
-            $transfertsParDate[$ligne['jour']] =
-                (float) $ligne['total'];
-        }
-
-        $labelsGraphique = [];
-        $gainsRetraitsGraphique = [];
-        $gainsTransfertsGraphique = [];
+    private function preparerGraphiques(
+        array $retraits,
+        array $transferts,
+        array $commissions
+    ): array {
+        $labels = [];
+        $gainsRetraits = [];
+        $gainsTransferts = [];
+        $gainsCommissions = [];
 
         for ($i = 29; $i >= 0; $i--) {
             $date = date(
@@ -131,97 +264,56 @@ class GestionOperateur extends BaseController
                 strtotime("-{$i} days")
             );
 
-            $labelsGraphique[] = date(
+            $labels[] = date(
                 'd/m',
                 strtotime($date)
             );
 
-            $gainsRetraitsGraphique[] =
-                $retraitsParDate[$date] ?? 0;
+            $gainsRetraits[] =
+                (float) ($retraits[$date] ?? 0);
 
-            $gainsTransfertsGraphique[] =
-                $transfertsParDate[$date] ?? 0;
+            $gainsTransferts[] =
+                (float) ($transferts[$date] ?? 0);
+
+            $gainsCommissions[] =
+                (float) ($commissions[$date] ?? 0);
         }
 
-        $gainCommissions = $db->table('operations o')
-            ->select(
-                'COALESCE(SUM(
-                    o.montant * b.commission / 100
-                ), 0) AS total_commission',
-                false
-            )
-            ->join(
-                'types_operations t',
-                't.id = o.type_operation_id'
-            )
-            ->join(
-                'baremes_frais b',
-                'b.type_operation_id = o.type_operation_id
-                AND o.montant >= b.montant_min
-                AND (
-                    b.montant_max IS NULL
-                    OR o.montant <= b.montant_max
-                )',
-                'left'
-            )
-            ->where('t.code', 'TRANS')
-            ->where('o.statut', 'VALIDEE')
-            ->where('b.actif', 1)
-            ->get()
-            ->getRow()
-            ->total_commission ?? 0;
+        return [
+            'labelsGraphique' => $labels,
 
-        $gainsCommissionsGraphique = $db->query("
-            SELECT
-                strftime('%m', o.date_operation) AS mois,
+            'gainsRetraitsGraphique' =>
+                $gainsRetraits,
 
-                COALESCE(
-                    SUM(
-                        o.montant * b.commission / 100
-                    ),
-                    0
-                ) AS total
+            'gainsTransfertsGraphique' =>
+                $gainsTransferts,
 
-            FROM operations o
+            'gainsCommissionsGraphique' =>
+                $gainsCommissions
+        ];
+    }
 
-            INNER JOIN types_operations t
-                ON t.id = o.type_operation_id
-
-            INNER JOIN baremes_frais b
-                ON b.type_operation_id = o.type_operation_id
-                AND o.montant >= b.montant_min
-                AND (
-                    b.montant_max IS NULL
-                    OR o.montant <= b.montant_max
-                )
-
-            WHERE o.statut = 'VALIDEE'
-            AND t.code = 'TRANS'
-            AND b.actif = 1
-
-            GROUP BY strftime('%m', o.date_operation)
-
-            ORDER BY strftime('%m', o.date_operation)
-        ")->getResultArray();
-
-        $montantsParOperateur = $db->query("
+    private function getMontantsParOperateur($db): array
+    {
+        return $db->query("
             SELECT
                 op.id AS operateur_id,
                 op.nom AS operateur,
                 op.code,
 
-                COUNT(o.id) AS nombre_transferts,
+                COUNT(DISTINCT o.id)
+                    AS nombre_transferts,
 
                 COALESCE(
                     SUM(o.montant),
                     0
-                ) AS montant_envoye
+                ) AS montant_total_transfere
 
             FROM operateurs op
 
-            INNER JOIN prefixes_operateur p
+            LEFT JOIN prefixes_operateur p
                 ON p.operateur_id = op.id
-                AND p.actif = 1
+            AND p.actif = 1
 
             LEFT JOIN operations o
                 ON SUBSTR(
@@ -229,15 +321,8 @@ class GestionOperateur extends BaseController
                     1,
                     LENGTH(p.prefixe)
                 ) = p.prefixe
-
-                AND o.statut = 'VALIDEE'
-
-                AND o.type_operation_id = (
-                    SELECT id
-                    FROM types_operations
-                    WHERE code = 'TRANSFERT'
-                    LIMIT 1
-                )
+            AND o.type_operation_id = 2
+            AND o.statut = 'VALIDEE'
 
             WHERE op.actif = 1
 
@@ -246,24 +331,8 @@ class GestionOperateur extends BaseController
                 op.nom,
                 op.code
 
-            ORDER BY montant_envoye DESC
+            ORDER BY montant_total_transfere DESC
         ")->getResultArray();
-
-        return view('operateur/gestion', [
-            'gainTotal'                => $gainTotal,
-            'gainRetraits'             => $gainRetraits,
-            'gainTransferts'           => $gainTransferts,
-            'totalOperations'          => $totalOperations,
-            'montantTotal'             => $montantTotal,
-            'totalFrais'               => $totalFrais,
-            'comptesActifs'            => $comptesActifs,
-            'labelsGraphique'          => $labelsGraphique,
-            'gainsRetraitsGraphique'   => $gainsRetraitsGraphique,
-            'gainsTransfertsGraphique' => $gainsTransfertsGraphique,
-            'gainsCommissions' => $gainCommissions,
-            'gainsCommissionsGraphique' => $gainsCommissionsGraphique,
-            'montantsParOperateur' => $montantsParOperateur,
-        ]);
     }
 
     public function showFormLogin(): string
