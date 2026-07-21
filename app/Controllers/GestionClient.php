@@ -159,6 +159,18 @@ class GestionClient extends BaseController
     }
     
     /////////////////////////////////////////////////////////////////////
+    private function calculFrais($db, float $montant): float
+    {
+        $bareme = $db->table('baremes_frais')
+                    ->where('montant_min <=', $montant)
+                    ->where('montant_max >=', $montant)
+                    ->get()
+                    ->getRow();
+
+        return $bareme ? (float)$bareme->frais : 0.0;
+    }
+
+    /////////////////////////////////////////////////////////////////////
     public function doDepot()
     {
         if (!session()->has('telephone')) {
@@ -282,111 +294,126 @@ class GestionClient extends BaseController
     }
 
 
-    private function calculFrais($db, float $montant): float
+    /////////////////////////////////////////////////////////////////////
+    private function ValiderTelephone($db, string $telephone): ?int
     {
-        $bareme = $db->table('baremes_frais')
-                    ->where('montant_min <=', $montant)
-                    ->where('montant_max >=', $montant)
-                    ->get()
-                    ->getRow();
+        $session = session();
+        $operateur_id = $session->get('operateur_id');
+        
+        if (!$operateur_id) {
+            return null;
+        }
 
-        return $bareme ? (float)$bareme->frais : 0.0;
+        if (!preg_match('/^(032|033|034|038|037|031)\d{7}$/', $telephone)) {
+            return null;
+        }
+
+        $prefixe = substr($telephone, 0, 3);
+
+        $prefixeAppartient = $db->table('prefixes_operateur')
+            ->where('prefixe', $prefixe)
+            ->where('operateur_id', $operateur_id)
+            ->where('actif', 1)
+            ->get()
+            ->getRow();
+
+        return ($prefixeAppartient !== null) ? 1 : 0;
     }
-
 
     /////////////////////////////////////////////////////////////////////
-public function doTransfert()
-{
-    if (!session()->has('telephone')) {
-        return redirect()->to('login/client');
+    public function doTransfert()
+    {
+        if (!session()->has('telephone')) {
+            return redirect()->to('login/client');
+        }
+
+        //////////////////////////////
+        $rules = [
+            'destinataire' => 'required|numeric',
+            'montant'      => 'required|numeric|greater_than[0]'
+        ];
+
+        if (!$this->validate($rules)) {
+            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+        }
+
+
+        //////////////////////////////
+        $db = \Config\Database::connect();
+        $telExpediteur = session()->get('telephone');
+        $telDestinataire = $this->request->getPost('destinataire');
+        $montantInitial = (float) $this->request->getPost('montant');
+        $inclureFraisRetrait = $this->request->getPost('inclureFraisRetrait') !== null;
+
+        if ($telExpediteur === $telDestinataire) {
+            return redirect()->back()->withInput()->with('error', 'Vous ne pouvez pas transférer à vous-même.');
+        }
+
+        $validationOp = $this->ValiderTelephone($db, $telDestinataire);
+
+        if ($validationOp === null) {
+            return redirect()->back()->withInput()->with('error', 'Le numéro du destinataire est invalide ou le format est incorrect.');
+        }
+
+        // $validationOp == 1 <=> même opérateur
+        // $validationOp == 0 <=> autre opérateur
+        $estMemeOperateur = ($validationOp === 1);
+        
+        //////////////////////////////
+        $fraisTransfert = $this->calculFrais($db, $montantInitial);
+        
+        $fraisRetrait = 0.0;
+        if ($inclureFraisRetrait && $estMemeOperateur) {
+            $fraisRetrait = $this->calculFrais($db, $montantInitial);
+        }
+
+        $montantPourDestinataire = $montantInitial + $fraisRetrait; 
+        $totalADebiter = $montantInitial + $fraisTransfert + $fraisRetrait;
+
+
+        //////////////////////////////
+        $db->transStart();
+        $typeOp    = $db->table('types_operations')->where('code', 'TRANS')->get()->getRow();
+        $compteExp = $db->table('comptes')->where('telephone', $telExpediteur)->get()->getRow();
+        
+        $compteDest = $db->table('comptes')->where('telephone', $telDestinataire)->get()->getRow();
+
+        if (!$typeOp || !$compteExp || $compteExp->statut !== 'ACTIF') {
+            $db->transRollback();
+            return redirect()->back()->withInput()->with('error', 'Configuration manquante ou compte inactif.');
+        }
+
+        if ((float)$compteExp->solde < $totalADebiter) {
+            $db->transRollback();
+            return redirect()->back()->withInput()->with('error', 'Solde insuffisant pour effectuer ce transfert.');
+        }
+
+        $reference = $this->genererReference($typeOp->code);
+
+                //////////////////////////////
+        $operationId = $this->insertOperation(
+            $db, $typeOp->id, $reference, $compteExp->id,
+            $telDestinataire,
+            $montantPourDestinataire,
+            "Transfert vers {$telDestinataire}",
+            $fraisTransfert
+        );
+
+                //////////////////////////////
+        $soldeApresExp = (float)$compteExp->solde - $totalADebiter;
+        $this->insertMouvement($db, $operationId, $compteExp->id, 'DEBIT', $compteExp->solde, $soldeApresExp, $totalADebiter, "Transfert envoyé");
+        $db->table('comptes')->update(['solde' => $soldeApresExp], ['id' => $compteExp->id]);
+
+        if ($compteDest) {
+            $soldeApresDest = (float)$compteDest->solde + $montantPourDestinataire;
+            $this->insertMouvement($db, $operationId, $compteDest->id, 'CREDIT', $compteDest->solde, $soldeApresDest, $montantPourDestinataire, "Reçu de {$telExpediteur}");
+            $db->table('comptes')->update(['solde' => $soldeApresDest], ['id' => $compteDest->id]);
+        }
+
+        $db->transComplete();
+
+        return redirect()->to('client/dashboard')->with('success', 'Transfert réussi (Réf: ' . $reference . ').');
     }
-
-    $rules = [
-        'destinataire' => 'required|numeric',
-        'montant'      => 'required|numeric|greater_than[0]'
-    ];
-
-    if (!$this->validate($rules)) {
-        return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
-    }
-
-    $db = \Config\Database::connect();
-    $telExpediteur = session()->get('telephone');
-    $telDestinataire = $this->request->getPost('destinataire');
-    $montantInitial = (float) $this->request->getPost('montant');
-    $inclureFraisRetrait = $this->request->getPost('inclureFraisRetrait') !== null;
-
-    // 1. Détection de l'opérateur du destinataire
-    $prefixeDest = substr($telDestinataire, 0, 3);
-    $infoOp = $db->table('prefixes_operateur')
-                 ->join('operateurs', 'operateurs.id = prefixes_operateur.operateur_id')
-                 ->where('prefixe', $prefixeDest)
-                 ->get()->getRow();
-
-    // On considère comme "Autre Opérateur" si le nom n'est pas "MadaCash" (ajustez selon votre nom réel)
-    $estAutreOperateur = ($infoOp && $infoOp->nom !== 'MadaCash');
-
-    // 2. Calculs des coûts
-    $fraisTransfert = $this->calculFrais($db, $montantInitial);
-    
-    // Règle V2 : Pas de frais de retrait pour les autres opérateurs
-    $fraisRetrait = 0.0;
-    if ($inclureFraisRetrait && !$estAutreOperateur) {
-        $fraisRetrait = $this->calculFrais($db, $montantInitial);
-    }
-
-    // 3. Calculs pour la table opérations
-    $montantPourDestinataire = $montantInitial + $fraisRetrait; 
-    $totalADebiter = $montantInitial + $fraisTransfert + $fraisRetrait;
-
-    if ($telExpediteur === $telDestinataire) {
-        return redirect()->back()->withInput()->with('error', 'Vous ne pouvez pas transférer à vous-même.');
-    }
-
-    $db->transStart();
-
-    $typeOp    = $db->table('types_operations')->where('code', 'TRA')->get()->getRow();
-    $compteExp = $db->table('comptes')->where('telephone', $telExpediteur)->get()->getRow();
-    // Le compte destinataire peut être absent si c'est un autre opérateur
-    $compteDest = $db->table('comptes')->where('telephone', $telDestinataire)->get()->getRow();
-
-    if (!$typeOp || !$compteExp || $compteExp->statut !== 'ACTIF') {
-        $db->transRollback();
-        return redirect()->back()->withInput()->with('error', 'Configuration manquante ou compte inactif.');
-    }
-
-    if ((float)$compteExp->solde < $totalADebiter) {
-        $db->transRollback();
-        return redirect()->back()->withInput()->with('error', 'Solde insuffisant pour effectuer ce transfert.');
-    }
-
-    $reference = $this->genererReference($typeOp->code);
-
-    // Insertion
-    $operationId = $this->insertOperation(
-        $db, $typeOp->id, $reference, $compteExp->id,
-        ($compteDest ? $compteDest->id : null),
-        $montantPourDestinataire,
-        "Transfert vers {$telDestinataire}",
-        $fraisTransfert
-    );
-
-    // Mises à jour
-    $soldeApresExp = (float)$compteExp->solde - $totalADebiter;
-    $this->insertMouvement($db, $operationId, $compteExp->id, 'DEBIT', $compteExp->solde, $soldeApresExp, $totalADebiter, "Transfert envoyé");
-    $db->table('comptes')->update(['solde' => $soldeApresExp], ['id' => $compteExp->id]);
-
-    // Si compte interne, on crédite le destinataire
-    if ($compteDest) {
-        $soldeApresDest = (float)$compteDest->solde + $montantPourDestinataire;
-        $this->insertMouvement($db, $operationId, $compteDest->id, 'CREDIT', $compteDest->solde, $soldeApresDest, $montantPourDestinataire, "Reçu de {$telExpediteur}");
-        $db->table('comptes')->update(['solde' => $soldeApresDest], ['id' => $compteDest->id]);
-    }
-
-    $db->transComplete();
-
-    return redirect()->to('client/dashboard')->with('success', 'Transfert réussi (Réf: ' . $reference . ').');
-}
 
 
 }

@@ -17,6 +17,7 @@ class PrefixeModel extends Model
     ];
 
 
+    
     public function recupererPrefixesActifs($operateur_id): array
     {
         $resultats =   $this->where('actif', 1)
