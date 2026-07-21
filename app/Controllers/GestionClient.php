@@ -72,6 +72,7 @@ class GestionClient extends BaseController
         $telephone = session()->get('telephone');
         $clientModel = new ClientModel();
         $baremeModel = new BaremeFraisModel();
+        $prefixeModel = new PrefixeModel();
         
         $compte = $clientModel->where('telephone', $telephone)->first();
 
@@ -80,14 +81,28 @@ class GestionClient extends BaseController
         }
 
         $liste_bareme = $baremeModel->findAll();
-
-        $prefixeModel = new PrefixeModel();
         $prefixesValides = $prefixeModel->findAll(); 
+
+        //////////////////////////////////////////////
+        $db = \Config\Database::connect();
+        $operateur_id = session()->get('operateur_id');
+        
+        $prefixesActuel = [];
+        if ($operateur_id) {
+            $result = $db->table('prefixes_operateur')
+                ->where('operateur_id', $operateur_id)
+                ->where('actif', 1)
+                ->get()
+                ->getResultArray();
+            
+            $prefixesActuel = array_column($result, 'prefixe');
+        }
 
         return view('client/transfert', [
             'solde' => $compte['solde'], 
             'bareme' => $liste_bareme,
-            'prefixes' => $prefixesValides 
+            'prefixes' => $prefixesValides,
+            'prefixesActuel' => $prefixesActuel 
         ]);
     }
 

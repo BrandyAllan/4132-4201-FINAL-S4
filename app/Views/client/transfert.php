@@ -71,6 +71,8 @@
 <script>
     const baremes = <?= json_encode($bareme) ?>;
     const prefixesValides = <?= json_encode($prefixes) ?>; 
+    // Préfixes stricts de l'opérateur connecté injectés depuis le contrôleur
+    const prefixesActuel = <?= json_encode($prefixesActuel ?? []) ?>; 
     
     const inputDest = document.getElementById('destinataire');
     const inputMontant = document.getElementById('montant');
@@ -85,7 +87,7 @@
 
     function calculerEtAfficher() {
         const montant = parseFloat(inputMontant.value);
-        const tel = inputDest.value;
+        const tel = inputDest.value.trim();
         
         // Sécurité : si pas de montant valide, on masque tout
         if (isNaN(montant) || montant <= 0) {
@@ -96,23 +98,24 @@
         }
 
         const prefixe = tel.substring(0, 3);
-        const estInterne = prefixesValides.some(p => p.prefixe === prefixe);
         
-        if (estInterne && tel.length >= 3) {
+        // Vérifie si le numéro appartient STRICTEMENT à l'opérateur actuel de la session
+        const estOperateurActuel = prefixesActuel.includes(prefixe);
+        
+        if (estOperateurActuel && tel.length >= 3) {
             containerOptionFrais.style.display = 'block';
         } else {
             containerOptionFrais.style.display = 'none';
-            checkboxFrais.checked = false;
+            if (checkboxFrais) checkboxFrais.checked = false; // Décoche l'option si on change de destinataire
         }
 
-        // Utilisation des noms de colonnes exacts vus dans votre console
         const item = baremes.find(b => montant >= Number(b.montant_min) && montant <= Number(b.montant_max));
         
         if (item) {
             spanFrais.textContent = Number(item.frais).toLocaleString('fr-FR') + ' Ar';
             containerFrais.style.display = 'block';
 
-            if (checkboxFrais.checked && estInterne) {
+            if (checkboxFrais && checkboxFrais.checked && estOperateurActuel) {
                 spanFraisRetrait.textContent = Number(item.frais).toLocaleString('fr-FR') + ' Ar';
                 containerFraisRetrait.style.display = 'block';
             } else {
@@ -124,9 +127,9 @@
         }
     }
 
-    inputMontant.addEventListener('input', calculerEtAfficher);
-    inputDest.addEventListener('input', calculerEtAfficher);
-    checkboxFrais.addEventListener('change', calculerEtAfficher);
+    if (inputMontant) inputMontant.addEventListener('input', calculerEtAfficher);
+    if (inputDest) inputDest.addEventListener('input', calculerEtAfficher);
+    if (checkboxFrais) checkboxFrais.addEventListener('change', calculerEtAfficher);
 </script>
 
 <?= $this->endSection() ?>
