@@ -114,5 +114,7 @@ $routes->group('client', function ($routes) {
     $routes->get('transfert', 'GestionClient::showTransfert');
     $routes->post('transfert', 'GestionClient::doTransfert');
     $routes->get('historique', 'GestionClient::showhistorique');
+    $routes->get('epargne', 'GestionClient::showFormEpargne');
+    $routes->post('epargne', 'GestionClient::configEpargne');
 });
 

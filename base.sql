@@ -18,6 +18,16 @@ CREATE TABLE comptes (
     date_creation DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     date_modification DATETIME
 );
+
+ALTER TABLE comptes
+ADD COLUMN pourcentage_epargne NUMERIC;
+
+CREATE TABLE epargne (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    compte_id INTEGER UNIQUE,
+    solde NUMERIC NOT NULL DEFAULT 0
+    CHECK (solde >=0)
+);
 CREATE TABLE types_operations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT NOT NULL UNIQUE,

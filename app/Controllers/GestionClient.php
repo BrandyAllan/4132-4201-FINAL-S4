@@ -131,7 +131,26 @@ class GestionClient extends BaseController
         ]);
     }
 
+    public function showFormEpargne() {
+        return view('client/epargne');
+    }
 
+    public function configEpargne() {
+        $session = session();
+        if (!$session->has('est_connecte')) {
+            return redirect()->to('connexion/client');
+        }
+        $db = \Config\Database::connect();
+        $pourcentage = $this->request->getPost('pourcentage');
+        $clientId = $session->get('client_id');
+
+        $db->table('comptes')->where('id', $clientId)->update([
+            'pourcentage_epargne'             => $pourcentage
+        ]);
+
+        return redirect()->to('client/dashboard')->with('success', 'Configuration de ' . $pourcentage . ' d\'épargne effectué');
+
+    }
 
     ///////////////////////////////////////////////////////////////////
     private function genererReference(string $codeTypeOperation): string
@@ -345,7 +364,7 @@ class GestionClient extends BaseController
                     ->get()
                     ->getRow();
         
-        $bareme ? (float)$bareme->frais : 0.0;
+        $frais_base = (float)$bareme->frais;
 
 
         if($this->ValiderTelephone($db, $telephone) === 1){
@@ -356,9 +375,9 @@ class GestionClient extends BaseController
                          ->get()
                          ->getRow();
 
-            $remise ? (float)$remise->pourcentage : 0.0;
+            $pourcentage = (float)$remise->pourcentage;
 
-            $frais = ( $bareme * $remise )/ 100;
+            $frais = $frais_base - (( $frais_base * $pourcentage )/ 100);
             return $frais;
         }
 
@@ -412,7 +431,12 @@ class GestionClient extends BaseController
             $fraisRetrait = $this->calculFrais($db, $montantInitial);
         }
 
-        $montantPourDestinataire = $montantInitial + $fraisRetrait; 
+        $compteDest = $db->table('comptes')->where('telephone', $telDestinataire)->get()->getRow();
+        if($compteDest) {
+            $pourcentage_epargne = $compteDest->pourcentage_epargne;
+        }
+        $montantEpargneDest = $montantInitial * $pourcentage_epargne / 100;
+        $montantPourDestinataire = ($montantInitial - $montantEpargneDest) + $fraisRetrait; 
         $totalADebiter = $montantInitial + $fraisTransfert + $fraisRetrait;
 
 
@@ -421,7 +445,6 @@ class GestionClient extends BaseController
         $typeOp    = $db->table('types_operations')->where('code', 'TRANS')->get()->getRow();
         $compteExp = $db->table('comptes')->where('telephone', $telExpediteur)->get()->getRow();
         
-        $compteDest = $db->table('comptes')->where('telephone', $telDestinataire)->get()->getRow();
 
         if (!$typeOp || !$compteExp || $compteExp->statut !== 'ACTIF') {
             $db->transRollback();
@@ -452,6 +475,18 @@ class GestionClient extends BaseController
         if ($compteDest) {
             $soldeApresDest = (float)$compteDest->solde + $montantPourDestinataire;
             $this->insertMouvement($db, $operationId, $compteDest->id, 'CREDIT', $compteDest->solde, $soldeApresDest, $montantPourDestinataire, "Reçu de {$telExpediteur}");
+
+            $epargneDest = $db->table('epargne')->where('compte_id', $compteDest->id)->get()->getRow();
+
+            if($epargneDest) {
+                $nouveauSolde = $epargneDest->solde + $montantEpargneDest;
+                $db->table('epargne')->where('id', $compteDest->id)->update(['solde'], $nouveauSolde);
+            } else {
+                $db->table('epargne')->insert([
+                    'compte_id' => $compteDest->id,
+                    'solde' => $montantEpargneDest
+                ]);
+            }
             $db->table('comptes')->update(['solde' => $soldeApresDest], ['id' => $compteDest->id]);
         }
 
@@ -566,4 +601,6 @@ class GestionClient extends BaseController
 
         return redirect()->to('client/dashboard')->with('success', 'Transfert multiple de ' . number_format($montantGlobal, 2) . ' Ar effectué avec succès (Réf: ' . $reference . ').');
     }
+
+    
 }

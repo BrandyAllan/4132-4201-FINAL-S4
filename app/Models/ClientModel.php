@@ -12,7 +12,7 @@ class ClientModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     
-    protected $allowedFields    = ['telephone', 'solde', 'statut', 'date_modification'];
+    protected $allowedFields    = ['telephone', 'solde', 'statut', 'date_modification', 'pourcentage_epargne'];
     
     protected $useTimestamps = false;
 

@@ -138,6 +138,17 @@
                 </a>
             </div>
 
+            <div class="col-12 mt-4">
+                <a href="<?= base_url('client/epargne') ?>" class="action-card flex-row gap-4 justify-content-start px-4 py-3 align-items-center">
+                    <span class="action-icon-wrapper mb-0"><i class="bi bi-clock-history fs-4"></i></span>
+                    <div class="flex-grow-1">
+                        <h3 class="h6 fw-bold mb-1 text-start">Configuration pourcentage d'épargne</h3>
+                        <small class="text-muted text-start d-block">Consulter la liste de vos dépôts, retraits et transferts effectués</small>
+                    </div>
+                    <i class="bi bi-chevron-right ms-auto text-muted fs-5"></i>
+                </a>
+            </div>
+
         </div>
     </main>
 
